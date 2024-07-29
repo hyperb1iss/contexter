@@ -7,6 +7,7 @@ use std::collections::hash_map::DefaultHasher;
 use clap::Parser;
 use clipboard_anywhere::set_clipboard;
 use ignore::WalkBuilder;
+use regex::Regex;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -36,13 +37,18 @@ fn gather_relevant_files(directory: &str, extensions: Vec<&str>, excludes: Vec<&
         .add_custom_ignore_filename(".gitignore")
         .build();
 
+    // Compile exclusion patterns into regular expressions
+    let exclude_patterns: Vec<Regex> = excludes.iter()
+        .map(|pattern| Regex::new(pattern).expect("Invalid regex pattern"))
+        .collect();
+
     // Collect relevant files based on extensions and exclusions
     for result in walker {
         match result {
             Ok(entry) => {
                 if entry.file_type().map_or(false, |ft| ft.is_file()) {
                     let path = entry.path();
-                    if !excludes.iter().any(|pattern| path.to_string_lossy().contains(pattern)) &&
+                    if !exclude_patterns.iter().any(|re| re.is_match(&path.to_string_lossy())) &&
                        (extensions.is_empty() || extensions.iter().any(|ext| path.extension().and_then(|e| e.to_str()) == Some(ext))) {
                         relevant_files.push(entry.into_path());
                     }
@@ -50,6 +56,13 @@ fn gather_relevant_files(directory: &str, extensions: Vec<&str>, excludes: Vec<&
             }
             Err(err) => {
                 eprintln!("Error reading file: {}", err);
+                if let Some(inner_err) = err.io_error() {
+                    if inner_err.kind() == io::ErrorKind::PermissionDenied {
+                        eprintln!("Permission denied while accessing {:?}", err);
+                    }
+                } else {
+                    eprintln!("Other error occurred: {:?}", err);
+                }
             }
         }
     }
@@ -73,7 +86,13 @@ fn concatenate_files(files: Vec<PathBuf>) -> io::Result<(String, Vec<String>)> {
     let mut seen_hashes = HashSet::new();
 
     for path in files {
-        let file_content = read_to_string(&path)?;
+        let file_content = match read_to_string(&path) {
+            Ok(content) => content,
+            Err(err) => {
+                eprintln!("Error reading file {:?}: {}", path, err);
+                continue;
+            }
+        };
         let file_hash = calculate_hash(&file_content);
 
         // Skip duplicate content
@@ -131,7 +150,7 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
-    use clipboard_anywhere::get_clipboard;
+    use clipboard_anywhere::{set_clipboard, get_clipboard};
 
     #[test]
     fn test_concatenate_files_and_clipboard() -> io::Result<()> {
