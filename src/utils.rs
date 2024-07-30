@@ -1,11 +1,12 @@
 use std::collections::HashSet;
-use std::fs::read_to_string;
+use std::fs::{read_to_string, metadata};
 use std::io;
 use std::path::PathBuf;
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 use ignore::WalkBuilder;
 use regex::Regex;
+use std::time::SystemTime;
 
 pub fn gather_relevant_files(directory: &str, extensions: Vec<&str>, excludes: Vec<&str>) -> io::Result<Vec<PathBuf>> {
     let project_dir = PathBuf::from(directory);
@@ -64,6 +65,9 @@ pub fn concatenate_files(files: Vec<PathBuf>) -> io::Result<(String, Vec<String>
     let mut filenames = Vec::new();
     let mut seen_hashes = HashSet::new();
 
+    // Section headers
+    content.push_str("========================================\nSection: Configuration Files\n========================================\n");
+
     for path in files {
         let file_content = match read_to_string(&path) {
             Ok(content) => content,
@@ -82,7 +86,14 @@ pub fn concatenate_files(files: Vec<PathBuf>) -> io::Result<(String, Vec<String>
             if !content.is_empty() {
                 content.push('\n');
             }
-            content.push_str(&format!("========================================\nFile: {:?}\n========================================\n", path));
+
+            // Add metadata
+            let metadata = metadata(&path)?;
+            let file_size = metadata.len();
+            let modified = metadata.modified().map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+            let modified_date = modified.duration_since(SystemTime::UNIX_EPOCH).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?.as_secs();
+
+            content.push_str(&format!("========================================\nFile: {:?}\nSize: {} bytes\nLast Modified: {}\n========================================\n", path, file_size, modified_date));
             content.push_str(&file_content.trim_end());
             filenames.push(path.to_string_lossy().to_string());
         }

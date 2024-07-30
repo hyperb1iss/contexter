@@ -3,6 +3,7 @@ use std::io::Write;
 use tempfile::tempdir;
 use clipboard_anywhere::{set_clipboard, get_clipboard};
 use contexter::{gather_relevant_files, concatenate_files};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn test_concatenate_files_and_clipboard() -> std::io::Result<()> {
@@ -34,18 +35,24 @@ fn test_concatenate_files_and_clipboard() -> std::io::Result<()> {
     // Run the concatenate_files function
     let (content, filenames) = concatenate_files(files)?;
 
+    // Get the current system time and handle potential errors
+    let modified = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+        .as_secs();
+
     // Print the actual content for debugging
     println!("Actual content:\n{}", content);
 
     // Verify the concatenated content
     let expected_content1 = format!(
-        "========================================\nFile: \"{}\"\n========================================\nThis is a test file 1.\nfn test_function() {{}}\n========================================\nFile: \"{}\"\n========================================\nThis is a test file 2.\nstruct TestStruct {{}}",
-        file1_path.to_string_lossy(), file2_path.to_string_lossy()
+        "========================================\nSection: Configuration Files\n========================================\n\n========================================\nFile: \"{}\"\nSize: 45 bytes\nLast Modified: {}\n========================================\nThis is a test file 1.\nfn test_function() {{}}\n========================================\nFile: \"{}\"\nSize: 44 bytes\nLast Modified: {}\n========================================\nThis is a test file 2.\nstruct TestStruct {{}}",
+        file1_path.to_string_lossy(), modified, file2_path.to_string_lossy(), modified
     );
 
     let expected_content2 = format!(
-        "========================================\nFile: \"{}\"\n========================================\nThis is a test file 2.\nstruct TestStruct {{}}\n========================================\nFile: \"{}\"\n========================================\nThis is a test file 1.\nfn test_function() {{}}",
-        file2_path.to_string_lossy(), file1_path.to_string_lossy()
+        "========================================\nSection: Configuration Files\n========================================\n\n========================================\nFile: \"{}\"\nSize: 44 bytes\nLast Modified: {}\n========================================\nThis is a test file 2.\nstruct TestStruct {{}}\n========================================\nFile: \"{}\"\nSize: 45 bytes\nLast Modified: {}\n========================================\nThis is a test file 1.\nfn test_function() {{}}",
+        file2_path.to_string_lossy(), modified, file1_path.to_string_lossy(), modified
     );
 
     assert!(content == expected_content1 || content == expected_content2, "Content does not match expected. Actual content:\n{}", content);
