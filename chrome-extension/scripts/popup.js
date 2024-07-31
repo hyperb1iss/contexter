@@ -289,11 +289,20 @@ $(document).ready(async function () {
     }
   });
 
-  copyContentBtn.on("click", function () {
-    console.log("Copying content to clipboard");
-    contentDisplay.select();
-    document.execCommand("copy");
-    showStatus("Content copied to clipboard");
+  copyContentBtn.on("click", async function () {
+    console.log("Fetching content before copying to clipboard");
+    if (currentProject) {
+      const content = await fetchProjectContent(currentProject, selectedFiles, allFiles);
+      if (content) {
+        contentDisplay.val(content).show();
+        contentDisplay.select();
+        document.execCommand("copy");
+        showStatus("Content fetched and copied to clipboard");
+      }
+    } else {
+      console.log("No project selected");
+      showStatus("Please select a project first", true);
+    }
   });
 
   console.log("Popup script initialization complete");
