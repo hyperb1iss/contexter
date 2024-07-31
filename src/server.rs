@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::contexter::{concatenate_files, gather_relevant_files};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use constant_time_eq::constant_time_eq;
-use log::{debug, error, info};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -20,6 +20,17 @@ pub struct ProjectListResponse {
 #[derive(Serialize, Deserialize)]
 pub struct ProjectContentResponse {
     pub content: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ProjectFilesResponse {
+    pub files: Vec<String>,
+}
+
+#[derive(Deserialize)]
+pub struct ContexterRequest {
+    pub files: Option<Vec<String>>,
+    pub path: Option<String>,
 }
 
 fn hash_api_key(key: &str) -> String {
@@ -86,6 +97,93 @@ pub async fn get_project_content(
     }
 }
 
+pub async fn list_project_files(
+    req: HttpRequest,
+    project_name: web::Path<String>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let config = data.config.read().await;
+    if let Some(api_key) = req.headers().get("X-API-Key") {
+        if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
+            return HttpResponse::Unauthorized().finish();
+        }
+    } else {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let project_name = project_name.into_inner();
+
+    if let Some(project_path) = config.projects.get(&project_name) {
+        debug!("Listing files for project: {}", project_name);
+        match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
+            Ok(files) => {
+                let file_paths: Vec<String> = files
+                    .iter()
+                    .map(|path| {
+                        path.strip_prefix(project_path)
+                            .unwrap()
+                            .to_string_lossy()
+                            .into_owned()
+                    })
+                    .collect();
+                HttpResponse::Ok().json(ProjectFilesResponse { files: file_paths })
+            }
+            Err(e) => {
+                error!("Error gathering files: {}", e);
+                HttpResponse::InternalServerError().finish()
+            }
+        }
+    } else {
+        HttpResponse::NotFound().body(format!("Project '{}' not found", project_name))
+    }
+}
+
+pub async fn run_contexter(
+    req: HttpRequest,
+    project_name: web::Path<String>,
+    contexter_req: web::Json<ContexterRequest>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let config = data.config.read().await;
+    if let Some(api_key) = req.headers().get("X-API-Key") {
+        if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
+            return HttpResponse::Unauthorized().finish();
+        }
+    } else {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let project_name = project_name.into_inner();
+
+    if let Some(project_path) = config.projects.get(&project_name) {
+        let base_path = project_path.clone();
+        let files_to_process = if let Some(files) = &contexter_req.files {
+            files.iter().map(|f| base_path.join(f)).collect()
+        } else if let Some(path) = &contexter_req.path {
+            let full_path = base_path.join(path);
+            match gather_relevant_files(full_path.to_str().unwrap(), vec![], vec![]) {
+                Ok(files) => files,
+                Err(e) => {
+                    error!("Error gathering files: {}", e);
+                    return HttpResponse::InternalServerError().finish();
+                }
+            }
+        } else {
+            return HttpResponse::BadRequest().body("Either 'files' or 'path' must be specified");
+        };
+
+        match concatenate_files(files_to_process) {
+            Ok((content, _)) => HttpResponse::Ok().json(ProjectContentResponse { content }),
+            Err(e) => {
+                error!("Error concatenating files: {}", e);
+                HttpResponse::InternalServerError().finish()
+            }
+        }
+    } else {
+        HttpResponse::NotFound().body(format!("Project '{}' not found", project_name))
+    }
+}
+
 pub async fn run_server(config: Config, quiet: bool, verbose: bool) -> std::io::Result<()> {
     // Setup logging
     if verbose {
@@ -103,13 +201,15 @@ pub async fn run_server(config: Config, quiet: bool, verbose: bool) -> std::io::
     let listen_address = app_state.config.read().await.listen_address.clone();
     let port = app_state.config.read().await.port;
 
-    info!("Starting server on {}:{}", listen_address, port);
+    debug!("Starting server on {}:{}", listen_address, port);
 
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             .route("/projects", web::get().to(list_projects))
             .route("/project/{name}", web::get().to(get_project_content))
+            .route("/project/{name}/files", web::get().to(list_project_files))
+            .route("/project/{name}/contexter", web::post().to(run_contexter))
     })
     .bind((listen_address, port))?
     .run()
