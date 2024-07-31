@@ -1,20 +1,34 @@
 use crate::config::Config;
 use crate::contexter::{concatenate_files, gather_relevant_files};
-use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use constant_time_eq::constant_time_eq;
-use log::{debug, error, info, warn, LevelFilter};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use serde_json;
 
 pub struct AppState {
     pub config: Arc<RwLock<Config>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ProjectListResponse {
-    pub projects: Vec<String>,
+    pub projects: Vec<ProjectSummary>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ProjectSummary {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ProjectMetadata {
+    pub name: String,
+    pub path: String,
+    pub files: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -22,15 +36,14 @@ pub struct ProjectContentResponse {
     pub content: String,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct ProjectFilesResponse {
-    pub files: Vec<String>,
-}
-
 #[derive(Deserialize)]
 pub struct ContexterRequest {
-    pub files: Option<Vec<String>>,
-    pub path: Option<String>,
+    pub paths: Option<Vec<String>>,
+}
+
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    pub error: String,
 }
 
 fn hash_api_key(key: &str) -> String {
@@ -47,24 +60,38 @@ pub async fn validate_api_key(config: &Config, api_key: &str) -> bool {
         .any(|stored_key| constant_time_eq(stored_key.as_bytes(), hashed_key.as_bytes()))
 }
 
-pub async fn list_projects(req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
+pub async fn list_projects(
+    req: HttpRequest,
+    data: web::Data<AppState>,
+) -> impl Responder {
     let config = data.config.read().await;
     if let Some(api_key) = req.headers().get("X-API-Key") {
         if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
-            warn!("Unauthorized access attempt to list projects");
-            return HttpResponse::Unauthorized().finish();
+            return HttpResponse::Unauthorized().json(ErrorResponse {
+                error: "Invalid API key".to_string(),
+            });
         }
     } else {
-        warn!("Missing API key in request to list projects");
-        return HttpResponse::Unauthorized().finish();
+        return HttpResponse::Unauthorized().json(ErrorResponse {
+            error: "Missing API key".to_string(),
+        });
     }
 
-    let projects: Vec<String> = config.projects.keys().cloned().collect();
+    let projects: Vec<ProjectSummary> = config.projects
+        .iter()
+        .map(|(name, path)| ProjectSummary {
+            name: name.clone(),
+            path: path.to_string_lossy().into_owned(),
+        })
+        .collect();
+
     info!("Listed {} projects", projects.len());
-    HttpResponse::Ok().json(ProjectListResponse { projects })
+    let response = ProjectListResponse { projects };
+    info!("Response: {}", serde_json::to_string(&response).unwrap());
+    HttpResponse::Ok().json(response)
 }
 
-pub async fn get_project_content(
+pub async fn get_project_metadata(
     req: HttpRequest,
     project_name: web::Path<String>,
     data: web::Data<AppState>,
@@ -72,104 +99,49 @@ pub async fn get_project_content(
     let config = data.config.read().await;
     if let Some(api_key) = req.headers().get("X-API-Key") {
         if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
-            warn!(
-                "Unauthorized access attempt to get content for project: {}",
-                project_name
-            );
-            return HttpResponse::Unauthorized().finish();
+            return HttpResponse::Unauthorized().json(ErrorResponse {
+                error: "Invalid API key".to_string(),
+            });
         }
     } else {
-        warn!(
-            "Missing API key in request to get content for project: {}",
-            project_name
-        );
-        return HttpResponse::Unauthorized().finish();
+        return HttpResponse::Unauthorized().json(ErrorResponse {
+            error: "Missing API key".to_string(),
+        });
     }
 
     let project_name = project_name.into_inner();
 
     if let Some(project_path) = config.projects.get(&project_name) {
-        debug!("Gathering context for project: {}", project_name);
-        match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
-            Ok(files) => match concatenate_files(files) {
-                Ok((content, _)) => {
-                    info!(
-                        "Successfully retrieved content for project: {}",
-                        project_name
-                    );
-                    HttpResponse::Ok().json(ProjectContentResponse { content })
-                }
-                Err(e) => {
-                    error!(
-                        "Error concatenating files for project {}: {}",
-                        project_name, e
-                    );
-                    HttpResponse::InternalServerError().finish()
-                }
-            },
-            Err(e) => {
-                error!("Error gathering files for project {}: {}", project_name, e);
-                HttpResponse::InternalServerError().finish()
-            }
-        }
-    } else {
-        warn!("Project not found: {}", project_name);
-        HttpResponse::NotFound().body(format!("Project '{}' not found", project_name))
-    }
-}
-
-pub async fn list_project_files(
-    req: HttpRequest,
-    project_name: web::Path<String>,
-    data: web::Data<AppState>,
-) -> impl Responder {
-    let config = data.config.read().await;
-    if let Some(api_key) = req.headers().get("X-API-Key") {
-        if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
-            warn!(
-                "Unauthorized access attempt to list files for project: {}",
-                project_name
-            );
-            return HttpResponse::Unauthorized().finish();
-        }
-    } else {
-        warn!(
-            "Missing API key in request to list files for project: {}",
-            project_name
-        );
-        return HttpResponse::Unauthorized().finish();
-    }
-
-    let project_name = project_name.into_inner();
-
-    if let Some(project_path) = config.projects.get(&project_name) {
-        debug!("Listing files for project: {}", project_name);
+        debug!("Gathering metadata for project: {}", project_name);
         match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
             Ok(files) => {
                 let file_paths: Vec<String> = files
                     .iter()
-                    .map(|path| {
-                        path.strip_prefix(project_path)
-                            .unwrap()
-                            .to_string_lossy()
-                            .into_owned()
-                    })
+                    .map(|path| path.strip_prefix(project_path).unwrap().to_string_lossy().into_owned())
                     .collect();
-                info!(
-                    "Listed {} files for project: {}",
-                    file_paths.len(),
-                    project_name
-                );
-                HttpResponse::Ok().json(ProjectFilesResponse { files: file_paths })
-            }
+
+                let metadata = ProjectMetadata {
+                    name: project_name,
+                    path: project_path.to_string_lossy().into_owned(),
+                    files: file_paths,
+                };
+
+                info!("Successfully retrieved metadata for project: {}", metadata.name);
+                info!("Response: {}", serde_json::to_string(&metadata).unwrap());
+                HttpResponse::Ok().json(metadata)
+            },
             Err(e) => {
                 error!("Error gathering files for project {}: {}", project_name, e);
-                HttpResponse::InternalServerError().finish()
+                HttpResponse::InternalServerError().json(ErrorResponse {
+                    error: "Failed to gather project metadata".to_string(),
+                })
             }
         }
     } else {
         warn!("Project not found: {}", project_name);
-        HttpResponse::NotFound().body(format!("Project '{}' not found", project_name))
+        HttpResponse::NotFound().json(ErrorResponse {
+            error: format!("Project '{}' not found", project_name),
+        })
     }
 }
 
@@ -182,75 +154,62 @@ pub async fn run_contexter(
     let config = data.config.read().await;
     if let Some(api_key) = req.headers().get("X-API-Key") {
         if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
-            warn!(
-                "Unauthorized access attempt to run contexter for project: {}",
-                project_name
-            );
-            return HttpResponse::Unauthorized().finish();
+            return HttpResponse::Unauthorized().json(ErrorResponse {
+                error: "Invalid API key".to_string(),
+            });
         }
     } else {
-        warn!(
-            "Missing API key in request to run contexter for project: {}",
-            project_name
-        );
-        return HttpResponse::Unauthorized().finish();
+        return HttpResponse::Unauthorized().json(ErrorResponse {
+            error: "Missing API key".to_string(),
+        });
     }
 
     let project_name = project_name.into_inner();
 
     if let Some(project_path) = config.projects.get(&project_name) {
         let base_path = project_path.clone();
-        let files_to_process = if let Some(files) = &contexter_req.files {
-            debug!(
-                "Running contexter on specific files for project: {}",
-                project_name
-            );
-            files.iter().map(|f| base_path.join(f)).collect()
-        } else if let Some(path) = &contexter_req.path {
-            debug!(
-                "Running contexter on path '{}' for project: {}",
-                path, project_name
-            );
-            let full_path = base_path.join(path);
-            match gather_relevant_files(full_path.to_str().unwrap(), vec![], vec![]) {
+        let files_to_process = if let Some(paths) = &contexter_req.paths {
+            debug!("Running contexter on specific paths for project: {}", project_name);
+            paths.iter().flat_map(|p| {
+                let full_path = base_path.join(p);
+                gather_relevant_files(full_path.to_str().unwrap(), vec![], vec![]).unwrap_or_default()
+            }).collect()
+        } else {
+            debug!("Running contexter on entire project: {}", project_name);
+            match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
                 Ok(files) => files,
                 Err(e) => {
-                    error!(
-                        "Error gathering files for project {} at path {}: {}",
-                        project_name, path, e
-                    );
-                    return HttpResponse::InternalServerError().finish();
+                    error!("Error gathering files for project {}: {}", project_name, e);
+                    return HttpResponse::InternalServerError().json(ErrorResponse {
+                        error: "Failed to gather files".to_string(),
+                    });
                 }
             }
-        } else {
-            warn!("Invalid contexter request for project: {}", project_name);
-            return HttpResponse::BadRequest().body("Either 'files' or 'path' must be specified");
         };
 
         match concatenate_files(files_to_process) {
             Ok((content, processed_files)) => {
-                info!(
-                    "Successfully ran contexter on {} files for project: {}",
-                    processed_files.len(),
-                    project_name
-                );
-                HttpResponse::Ok().json(ProjectContentResponse { content })
-            }
+                info!("Successfully ran contexter on {} files for project: {}", processed_files.len(), project_name);
+                let response = ProjectContentResponse { content };
+                info!("Response: {}", serde_json::to_string(&response).unwrap());
+                HttpResponse::Ok().json(response)
+            },
             Err(e) => {
-                error!(
-                    "Error concatenating files for project {}: {}",
-                    project_name, e
-                );
-                HttpResponse::InternalServerError().finish()
+                error!("Error concatenating files for project {}: {}", project_name, e);
+                HttpResponse::InternalServerError().json(ErrorResponse {
+                    error: "Failed to concatenate files".to_string(),
+                })
             }
         }
     } else {
         warn!("Project not found: {}", project_name);
-        HttpResponse::NotFound().body(format!("Project '{}' not found", project_name))
+        HttpResponse::NotFound().json(ErrorResponse {
+            error: format!("Project '{}' not found", project_name),
+        })
     }
 }
 
-pub async fn run_server(config: Config, log_level: LevelFilter) -> std::io::Result<()> {
+pub async fn run_server(config: Config) -> std::io::Result<()> {
     let app_state = web::Data::new(AppState {
         config: Arc::new(RwLock::new(config)),
     });
@@ -263,12 +222,13 @@ pub async fn run_server(config: Config, log_level: LevelFilter) -> std::io::Resu
 
     HttpServer::new(move || {
         App::new()
-            .wrap(Logger::default())
             .app_data(app_state.clone())
-            .route("/projects", web::get().to(list_projects))
-            .route("/project/{name}", web::get().to(get_project_content))
-            .route("/project/{name}/files", web::get().to(list_project_files))
-            .route("/project/{name}/contexter", web::post().to(run_contexter))
+            .service(
+                web::scope("/api/v1")
+                    .route("/projects", web::get().to(list_projects))
+                    .route("/projects/{name}", web::get().to(get_project_metadata))
+                    .route("/projects/{name}", web::post().to(run_contexter))
+            )
     })
     .bind((listen_address, port))?
     .run()

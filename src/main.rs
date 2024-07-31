@@ -1,26 +1,20 @@
-use base64::{engine::general_purpose, Engine as _};
 use contexter::config::Config;
 use contexter::contexter::{concatenate_files, gather_relevant_files};
 use contexter::server::run_server;
-use env_logger::Env;
-use log::{info, LevelFilter};
-use rand::rngs::OsRng;
-use rand::RngCore;
-use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use rand::rngs::OsRng;
+use rand::RngCore;
+use sha2::{Sha256, Digest};
+use base64::{Engine as _, engine::general_purpose};
+use log::info;
+use env_logger::Env;
 
 #[derive(StructOpt)]
 #[structopt(name = "contexter", about = "A context gathering tool for LLMs")]
 enum Cli {
     #[structopt(name = "server", about = "Run in server mode")]
-    Server {
-        #[structopt(short, long, help = "Run quietly")]
-        quiet: bool,
-
-        #[structopt(short, long, help = "Verbose output")]
-        verbose: bool,
-    },
+    Server,
     #[structopt(name = "gather", about = "Gather context from files")]
     Gather {
         #[structopt(parse(from_os_str))]
@@ -87,36 +81,16 @@ fn hash_api_key(key: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
-fn init_logger(quiet: bool, verbose: bool) -> LevelFilter {
-    let log_level = if verbose {
-        LevelFilter::Debug
-    } else if quiet {
-        LevelFilter::Error
-    } else {
-        LevelFilter::Info
-    };
-
-    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
-        .filter(None, log_level)
-        .init();
-
-    log_level
-}
-
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::from_args();
 
-    // Initialize logger based on the command
-    let log_level = match &cli {
-        Cli::Server { quiet, verbose } => init_logger(*quiet, *verbose),
-        _ => init_logger(false, false), // Use default logging for other commands
-    };
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     match cli {
-        Cli::Server { quiet, verbose } => {
+        Cli::Server => {
             let config = Config::load()?;
-            run_server(config, log_level).await?;
+            run_server(config).await?;
         }
         Cli::Gather {
             directory,

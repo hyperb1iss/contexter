@@ -1,6 +1,10 @@
 # Contexter Server Documentation
 
-The Contexter server provides an API for managing and retrieving project contexts. This document outlines the available endpoints and how to interact with them.
+The Contexter server provides a RESTful API for managing and retrieving project contexts. This document outlines the available endpoints and how to interact with them.
+
+## API Version
+
+The current API version is v1. All endpoints are prefixed with `/api/v1/`.
 
 ## Authentication
 
@@ -18,7 +22,7 @@ contexter config generate-key
 
 Retrieves a list of all available projects.
 
-- **URL:** `/projects`
+- **URL:** `/api/v1/projects`
 - **Method:** GET
 - **Headers:**
   - `X-API-Key`: Your API key
@@ -26,7 +30,7 @@ Retrieves a list of all available projects.
 **Example curl command:**
 
 ```bash
-curl -X GET "http://localhost:3030/projects" \
+curl -X GET "http://localhost:3030/api/v1/projects" \
      -H "X-API-Key: your_api_key_here"
 ```
 
@@ -34,15 +38,24 @@ curl -X GET "http://localhost:3030/projects" \
 
 ```json
 {
-  "projects": ["project1", "project2", "project3"]
+  "projects": [
+    {
+      "name": "project1",
+      "path": "/path/to/project1"
+    },
+    {
+      "name": "project2",
+      "path": "/path/to/project2"
+    }
+  ]
 }
 ```
 
-### Get Project Content
+### Get Project Metadata
 
-Retrieves the concatenated content of all files in a specific project.
+Retrieves metadata for a specific project, including the list of files.
 
-- **URL:** `/project/{project_name}`
+- **URL:** `/api/v1/projects/{project-name}`
 - **Method:** GET
 - **Headers:**
   - `X-API-Key`: Your API key
@@ -50,7 +63,7 @@ Retrieves the concatenated content of all files in a specific project.
 **Example curl command:**
 
 ```bash
-curl -X GET "http://localhost:3030/project/project1" \
+curl -X GET "http://localhost:3030/api/v1/projects/project1" \
      -H "X-API-Key: your_api_key_here"
 ```
 
@@ -58,69 +71,105 @@ curl -X GET "http://localhost:3030/project/project1" \
 
 ```json
 {
-  "content": "... concatenated content of all files in the project ..."
-}
-```
-
-### List Project Files
-
-Retrieves a list of all files in a specific project.
-
-- **URL:** `/project/{project_name}/files`
-- **Method:** GET
-- **Headers:**
-  - `X-API-Key`: Your API key
-
-**Example curl command:**
-
-```bash
-curl -X GET "http://localhost:3030/project/project1/files" \
-     -H "X-API-Key: your_api_key_here"
-```
-
-**Example response:**
-
-```json
-{
-  "files": ["file1.rs", "file2.rs", "subfolder/file3.rs"]
+  "name": "project1",
+  "path": "/path/to/project1",
+  "files": [
+    "file1.rs",
+    "file2.rs",
+    "subfolder/file3.rs"
+  ]
 }
 ```
 
 ### Run Contexter
 
-Runs the Contexter on specified files or a path within a project.
+Runs the Contexter on a project, optionally specifying paths to include.
 
-- **URL:** `/project/{project_name}/contexter`
+- **URL:** `/api/v1/projects/{project-name}`
 - **Method:** POST
 - **Headers:**
   - `X-API-Key`: Your API key
   - `Content-Type: application/json`
-- **Body:**
+- **Body (optional):**
   ```json
   {
-    "files": ["file1.rs", "file2.rs"],
-    "path": "subfolder"
+    "paths": ["file1.rs", "subfolder", "file2.rs"]
   }
   ```
-  Note: Either `files` or `path` must be specified, but not both.
+  If no body is provided, the contexter will run on the entire project.
 
 **Example curl command:**
 
 ```bash
-curl -X POST "http://localhost:3030/project/project1/contexter" \
+curl -X POST "http://localhost:3030/api/v1/projects/project1" \
      -H "X-API-Key: your_api_key_here" \
      -H "Content-Type: application/json" \
-     -d '{"files": ["file1.rs", "file2.rs"]}'
+     -d '{"paths": ["file1.rs", "subfolder"]}'
 ```
 
 **Example response:**
 
 ```json
 {
-  "content": "... concatenated content of specified files ..."
+  "content": "... concatenated content of specified files or entire project ..."
 }
 ```
 
+## Error Handling
+
+The API uses standard HTTP status codes to indicate the success or failure of requests. In case of an error, the response will include a JSON object with an `error` field containing a description of the error.
+
+Example error response:
+
+```json
+{
+  "error": "Project 'nonexistent_project' not found"
+}
+```
+
+Common status codes:
+
+- 200 OK: Successful request
+- 400 Bad Request: Invalid request parameters
+- 401 Unauthorized: Invalid or missing API key
+- 404 Not Found: Requested resource not found
+- 500 Internal Server Error: Server-side error
+
 ## Server Management
 
-(The rest of the documentation remains the same...)
+### Starting the Server
+
+To start the Contexter server, use the following command:
+
+```bash
+contexter server
+```
+
+You can add the following flags:
+- `--quiet`: Run the server in quiet mode (minimal output)
+- `--verbose`: Run the server in verbose mode (debug output)
+
+### Configuring the Server
+
+You can configure the server using the following commands:
+
+```bash
+# Set the server port
+contexter config set-port 8080
+
+# Set the listen address
+contexter config set-address 127.0.0.1
+
+# Add a project
+contexter config add-project project_name /path/to/project
+
+# Remove a project
+contexter config remove-project project_name
+
+# List current configuration
+contexter config list
+```
+
+## API Versioning
+
+The current API version is v1. All endpoints are prefixed with `/api/v1/`. Future versions of the API may introduce changes or new features and will use a different version prefix (e.g., `/api/v2/`).
