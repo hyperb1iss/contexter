@@ -1,27 +1,27 @@
 body {
-    font-family: Arial, sans-serif;
-    padding: 10px;
-  }
-  
-  h1 {
-    font-size: 1.5em;
-    margin-bottom: 10px;
-  }
-  
-  label {
-    display: block;
-    margin-top: 10px;
-  }
-  
-  input {
-    width: 100%;
-    padding: 5px;
-    margin-top: 5px;
-  }
-  
-  button {
-    padding: 10px;
-    font-size: 1em;
-    cursor: pointer;
-    margin-top: 10px;
-  }
+  font-family: Arial, sans-serif;
+  padding: 10px;
+}
+
+h1 {
+  font-size: 1.5em;
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 5px;
+  margin-top: 5px;
+}
+
+button {
+  padding: 10px;
+  font-size: 1em;
+  cursor: pointer;
+  margin-top: 10px;
+}

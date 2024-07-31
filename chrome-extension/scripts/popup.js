@@ -1,197 +1,300 @@
-document.addEventListener('DOMContentLoaded', async () => {
-  const projectList = document.getElementById('projects');
-  const projectMetadata = document.getElementById('project-metadata');
-  const projectName = document.getElementById('project-name');
-  const projectPath = document.getElementById('project-path');
-  const fileTree = document.getElementById('file-tree');
-  const contentActions = document.getElementById('content-actions');
-  const fetchContentBtn = document.getElementById('fetch-content');
-  const copyContentBtn = document.getElementById('copy-content');
-  const contentDisplay = document.getElementById('content-display');
-  const statusMessage = document.getElementById('status-message');
-  const collapsibleToggle = document.querySelector('.collapsible-toggle');
-  const collapsibleContent = document.querySelector('.collapsible-content');
+console.log("Popup script started");
+console.log("jQuery version:", $.fn.jquery);
+console.log("jsTree version:", $.fn.jstree.version);
+
+$(document).ready(async function () {
+  console.log("Document ready, initializing...");
+
+  const projectList = $("#projects");
+  const projectMetadata = $("#project-metadata");
+  const projectName = $("#project-name");
+  const projectPath = $("#project-path");
+  const fileTree = $("#file-tree");
+  const fetchContentBtn = $("#fetch-content");
+  const copyContentBtn = $("#copy-content");
+  const contentDisplay = $("#content-display");
+  const statusMessage = $("#status-message");
+  const collapsibleToggle = $(".collapsible-toggle");
+  const collapsibleContent = $(".collapsible-content");
 
   let selectedFiles = new Set();
   let allFiles = [];
+  let currentProject = null;
 
   function showStatus(message, isError = false) {
-      statusMessage.textContent = message;
-      statusMessage.style.color = isError ? 'red' : 'green';
-      setTimeout(() => {
-          statusMessage.textContent = '';
-      }, 3000);
+    console.log(`Status: ${message} (${isError ? "Error" : "Success"})`);
+    statusMessage.text(message).css("color", isError ? "red" : "green");
+    setTimeout(() => statusMessage.text(""), 3000);
   }
 
   async function fetchProjects() {
-      try {
-          const { apiKey, serverUrl } = await chrome.storage.sync.get(['apiKey', 'serverUrl']);
-          const response = await fetch(`${serverUrl}/api/v1/projects`, {
-              headers: { 'X-API-Key': apiKey }
-          });
-          if (!response.ok) throw new Error('Failed to fetch projects');
-          const data = await response.json();
-          return data.projects;
-      } catch (error) {
-          console.error('Error fetching projects:', error);
-          showStatus('Error fetching projects', true);
-          return [];
+    try {
+      const { apiKey, serverUrl } = await chrome.storage.sync.get([
+        "apiKey",
+        "serverUrl",
+      ]);
+      console.log("API Key:", apiKey ? "Set" : "Not set");
+      console.log("Server URL:", serverUrl);
+
+      if (!apiKey || !serverUrl) {
+        throw new Error("API Key or Server URL is missing");
       }
+
+      const response = await fetch(`${serverUrl}/api/v1/projects`, {
+        headers: { "X-API-Key": apiKey },
+      });
+      if (!response.ok)
+        throw new Error(
+          `Failed to fetch projects: ${response.status} ${response.statusText}`
+        );
+      const data = await response.json();
+      console.log("Fetched projects:", data.projects);
+      return data.projects;
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      showStatus("Error fetching projects: " + error.message, true);
+      return [];
+    }
   }
 
   async function fetchProjectMetadata(projectName) {
-      try {
-          const { apiKey, serverUrl } = await chrome.storage.sync.get(['apiKey', 'serverUrl']);
-          const response = await fetch(`${serverUrl}/api/v1/projects/${projectName}`, {
-              headers: { 'X-API-Key': apiKey }
-          });
-          if (!response.ok) throw new Error('Failed to fetch project metadata');
-          return await response.json();
-      } catch (error) {
-          console.error('Error fetching project metadata:', error);
-          showStatus('Error fetching project metadata', true);
-          return null;
+    try {
+      console.log("Fetching metadata for project:", projectName);
+      const { apiKey, serverUrl } = await chrome.storage.sync.get([
+        "apiKey",
+        "serverUrl",
+      ]);
+      const response = await fetch(
+        `${serverUrl}/api/v1/projects/${projectName}`,
+        {
+          headers: { "X-API-Key": apiKey },
+        }
+      );
+      if (!response.ok)
+        throw new Error(
+          `Failed to fetch project metadata: ${response.status} ${response.statusText}`
+        );
+      const metadata = await response.json();
+      console.log("Fetched metadata:", metadata);
+      return metadata;
+    } catch (error) {
+      console.error("Error fetching project metadata:", error);
+      showStatus("Error fetching project metadata: " + error.message, true);
+      return null;
+    }
+  }
+
+  async function fetchProjectContent(projectName, selectedFiles, allFiles) {
+    try {
+      console.log("Fetching content for project:", projectName);
+      const { apiKey, serverUrl } = await chrome.storage.sync.get([
+        "apiKey",
+        "serverUrl",
+      ]);
+
+      let paths;
+      if (selectedFiles.size === allFiles.length) {
+        console.log("All files selected, sending empty list");
+        paths = [];
+      } else {
+        console.log("Sending list of selected files");
+        paths = Array.from(selectedFiles);
       }
+
+      console.log("Paths to fetch:", paths);
+
+      const response = await fetch(
+        `${serverUrl}/api/v1/projects/${projectName}`,
+        {
+          method: "POST",
+          headers: {
+            "X-API-Key": apiKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ paths }),
+        }
+      );
+      if (!response.ok)
+        throw new Error(
+          `Failed to fetch project content: ${response.status} ${response.statusText}`
+        );
+      const data = await response.json();
+      console.log("Fetched content:", data.content ? "Received" : "Empty");
+      return data.content;
+    } catch (error) {
+      console.error("Error fetching project content:", error);
+      showStatus("Error fetching project content: " + error.message, true);
+      return null;
+    }
   }
 
-  async function fetchProjectContent(projectName, paths) {
-      try {
-          const { apiKey, serverUrl } = await chrome.storage.sync.get(['apiKey', 'serverUrl']);
-          const response = await fetch(`${serverUrl}/api/v1/projects/${projectName}`, {
-              method: 'POST',
-              headers: {
-                  'X-API-Key': apiKey,
-                  'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ paths: paths.length > 0 ? Array.from(paths) : undefined })
-          });
-          if (!response.ok) throw new Error('Failed to fetch project content');
-          const data = await response.json();
-          return data.content;
-      } catch (error) {
-          console.error('Error fetching project content:', error);
-          showStatus('Error fetching project content', true);
-          return null;
-      }
-  }
+  function createJsTreeData(files) {
+    console.log("Creating jsTree data structure");
+    const tree = [];
+    const paths = {};
 
-  function createFileTree(files) {
-      const tree = {};
-      files.forEach(file => {
-          const parts = file.split('/');
-          let currentLevel = tree;
-          parts.forEach((part, index) => {
-              if (!currentLevel[part]) {
-                  currentLevel[part] = index === parts.length - 1 ? null : {};
-              }
-              currentLevel = currentLevel[part];
-          });
-      });
-      return tree;
-  }
-
-  function renderFileTree(tree, parentElement, path = '') {
-      for (const [name, subtree] of Object.entries(tree)) {
-          const item = document.createElement('div');
-          item.classList.add('file-tree-item');
-          const fullPath = path ? `${path}/${name}` : name;
-
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.checked = true;
-          checkbox.value = fullPath;
-
-          const label = document.createElement('label');
-          label.appendChild(checkbox);
-          label.appendChild(document.createTextNode(name));
-          item.appendChild(label);
-
-          if (subtree === null) {
-              // File
-              selectedFiles.add(fullPath);
-              checkbox.addEventListener('change', (e) => {
-                  if (e.target.checked) {
-                      selectedFiles.add(fullPath);
-                  } else {
-                      selectedFiles.delete(fullPath);
-                  }
-              });
+    files.forEach((file) => {
+      const parts = file.split("/");
+      let currentPath = "";
+      parts.forEach((part, index) => {
+        const isLast = index === parts.length - 1;
+        currentPath += (currentPath ? "/" : "") + part;
+        if (!paths[currentPath]) {
+          const node = {
+            id: currentPath,
+            text: part,
+            children: isLast ? false : [],
+            icon: isLast ? "jstree-file" : "jstree-folder",
+            state: {
+              selected: true,
+              opened: false, // Ensure all nodes start closed
+            },
+          };
+          if (index === 0) {
+            tree.push(node);
           } else {
-              // Folder
-              item.classList.add('file-tree-folder');
-              const folderContent = document.createElement('div');
-              folderContent.classList.add('file-tree-folder-content');
-              renderFileTree(subtree, folderContent, fullPath);
-              item.appendChild(folderContent);
-
-              label.addEventListener('click', (e) => {
-                  if (e.target !== checkbox) {
-                      e.preventDefault();
-                      item.classList.toggle('open');
-                      folderContent.classList.toggle('open');
-                  }
-              });
-
-              checkbox.addEventListener('change', (e) => {
-                  const isChecked = e.target.checked;
-                  folderContent.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                      cb.checked = isChecked;
-                      cb.dispatchEvent(new Event('change'));
-                  });
-              });
+            paths[
+              currentPath.substring(0, currentPath.lastIndexOf("/"))
+            ].children.push(node);
           }
+          paths[currentPath] = node;
+        }
+      });
+    });
 
-          parentElement.appendChild(item);
-      }
+    console.log("jsTree data structure created:", tree);
+    return tree;
   }
 
-  collapsibleToggle.addEventListener('click', () => {
-      collapsibleContent.classList.toggle('open');
-      collapsibleToggle.textContent = collapsibleContent.classList.contains('open') ? 'Files ▲' : 'Files ▼';
+  function selectAllNodes(treeElement) {
+    console.log("Selecting all nodes");
+    treeElement.jstree("check_all");
+    selectedFiles = new Set(allFiles);
+    console.log("All nodes selected, selectedFiles:", selectedFiles);
+  }
+
+  collapsibleToggle.on("click", function () {
+    console.log("Toggling file tree visibility");
+    collapsibleContent.toggleClass("open");
+    collapsibleToggle.text(
+      collapsibleContent.hasClass("open") ? "Files ▲" : "Files ▼"
+    );
   });
 
-  const projects = await fetchProjects();
-  projects.forEach(project => {
-      const li = document.createElement('li');
-      li.textContent = project.name;
-      li.addEventListener('click', async () => {
-          const metadata = await fetchProjectMetadata(project.name);
-          if (metadata) {
-              projectName.textContent = metadata.name;
-              projectPath.textContent = metadata.path;
-              fileTree.innerHTML = '';
+  try {
+    console.log("Fetching projects...");
+    const projects = await fetchProjects();
+    console.log("Projects received:", projects);
+
+    if (projects.length === 0) {
+      console.log("No projects available");
+      projectList.append("<li>No projects available</li>");
+    } else {
+      projects.forEach((project) => {
+        console.log("Adding project to list:", project.name);
+        const li = $("<li>")
+          .text(project.name)
+          .on("click", async function () {
+            console.log("Project clicked:", project.name);
+            const metadata = await fetchProjectMetadata(project.name);
+            if (metadata) {
+              currentProject = metadata.name;
+              projectName.text(metadata.name);
+              projectPath.text(metadata.path);
               allFiles = metadata.files;
               selectedFiles = new Set(allFiles);
 
-              const tree = createFileTree(allFiles);
-              renderFileTree(tree, fileTree);
+              console.log("Initializing jsTree");
+              fileTree.jstree("destroy");
+              fileTree
+                .jstree({
+                  core: {
+                    data: createJsTreeData(allFiles),
+                    themes: {
+                      name: "default",
+                      dots: false,
+                      icons: true,
+                    },
+                    expand_selected_onload: false, // Prevent auto-expanding selected nodes
+                  },
+                  plugins: ["checkbox", "wholerow"],
+                  checkbox: {
+                    three_state: true,
+                    whole_node: false,
+                    tie_selection: false,
+                  },
+                })
+                .on("ready.jstree", function (e, data) {
+                  selectAllNodes($(this));
+                  $(this).jstree("close_all"); // Ensure all nodes are closed after initialization
+                });
 
-              projectMetadata.style.display = 'block';
-              contentActions.style.display = 'block';
-              collapsibleContent.classList.remove('open');
-              collapsibleToggle.textContent = 'Files ▼';
-          }
+              projectMetadata.show();
+              collapsibleContent.removeClass("open");
+              collapsibleToggle.text("Files ▼");
+            }
+          });
+        projectList.append(li);
       });
-      projectList.appendChild(li);
-  });
+    }
+  } catch (error) {
+    console.error("Error in main execution:", error);
+    showStatus("Error loading projects: " + error.message, true);
+  }
 
-  fetchContentBtn.addEventListener('click', async () => {
-      const projectNameText = projectName.textContent;
-      if (projectNameText) {
-          const content = await fetchProjectContent(projectNameText, selectedFiles);
-          if (content) {
-              contentDisplay.value = content;
-              contentDisplay.style.display = 'block';
-              showStatus('Content fetched successfully');
-          }
+  fileTree.on("check_node.jstree uncheck_node.jstree", function (e, data) {
+    const node = data.node;
+    const isChecked = node.state.checked;
+
+    function updateSelectedFiles(nodeId, isSelected) {
+      if (isSelected) {
+        selectedFiles.add(nodeId);
       } else {
-          showStatus('Please select a project first', true);
+        selectedFiles.delete(nodeId);
       }
+
+      // If it's a folder, update all child files
+      const childNodes = fileTree.jstree(true).get_node(nodeId).children_d;
+      childNodes.forEach((childId) => {
+        if (allFiles.includes(childId)) {
+          // Only add if it's a file, not a folder
+          if (isSelected) {
+            selectedFiles.add(childId);
+          } else {
+            selectedFiles.delete(childId);
+          }
+        }
+      });
+    }
+
+    updateSelectedFiles(node.id, isChecked);
+    console.log("Selected files:", selectedFiles);
   });
 
-  copyContentBtn.addEventListener('click', () => {
-      contentDisplay.select();
-      document.execCommand('copy');
-      showStatus('Content copied to clipboard');
+  fetchContentBtn.on("click", async function () {
+    if (currentProject) {
+      console.log("Fetching content for project:", currentProject);
+      const content = await fetchProjectContent(
+        currentProject,
+        selectedFiles,
+        allFiles
+      );
+      if (content) {
+        contentDisplay.val(content).show();
+        showStatus("Content fetched successfully");
+      }
+    } else {
+      console.log("No project selected");
+      showStatus("Please select a project first", true);
+    }
   });
+
+  copyContentBtn.on("click", function () {
+    console.log("Copying content to clipboard");
+    contentDisplay.select();
+    document.execCommand("copy");
+    showStatus("Content copied to clipboard");
+  });
+
+  console.log("Popup script initialization complete");
 });
