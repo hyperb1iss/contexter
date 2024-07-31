@@ -1,12 +1,14 @@
+use base64::{engine::general_purpose, Engine as _};
 use contexter::config::Config;
 use contexter::contexter::{concatenate_files, gather_relevant_files};
 use contexter::server::run_server;
-use std::path::PathBuf;
-use structopt::StructOpt;
+use env_logger::Env;
+use log::{info, LevelFilter};
 use rand::rngs::OsRng;
 use rand::RngCore;
-use sha2::{Sha256, Digest};
-use base64::{Engine as _, engine::general_purpose};
+use sha2::{Digest, Sha256};
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(name = "contexter", about = "A context gathering tool for LLMs")]
@@ -85,14 +87,36 @@ fn hash_api_key(key: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
+fn init_logger(quiet: bool, verbose: bool) -> LevelFilter {
+    let log_level = if verbose {
+        LevelFilter::Debug
+    } else if quiet {
+        LevelFilter::Error
+    } else {
+        LevelFilter::Info
+    };
+
+    env_logger::Builder::from_env(Env::default().default_filter_or("info"))
+        .filter(None, log_level)
+        .init();
+
+    log_level
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::from_args();
 
+    // Initialize logger based on the command
+    let log_level = match &cli {
+        Cli::Server { quiet, verbose } => init_logger(*quiet, *verbose),
+        _ => init_logger(false, false), // Use default logging for other commands
+    };
+
     match cli {
         Cli::Server { quiet, verbose } => {
             let config = Config::load()?;
-            run_server(config, quiet, verbose).await?;
+            run_server(config, log_level).await?;
         }
         Cli::Gather {
             directory,
@@ -111,16 +135,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut config = Config::load()?;
             match cmd {
                 ConfigCommand::AddProject { name, path } => {
-                    config.add_project(name, path);
+                    config.add_project(name.clone(), path.clone());
                     config.save()?;
-                    println!("Project added successfully");
+                    info!("Project '{}' added successfully with path {:?}", name, path);
                 }
                 ConfigCommand::RemoveProject { name } => {
                     if config.remove_project(&name).is_some() {
                         config.save()?;
-                        println!("Project removed successfully");
+                        info!("Project '{}' removed successfully", name);
                     } else {
-                        println!("Project not found");
+                        println!("Project '{}' not found", name);
                     }
                 }
                 ConfigCommand::GenerateKey => {
@@ -130,22 +154,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     config.save()?;
                     println!("New API key generated: {}", new_key);
                     println!("Please store this key securely. It won't be displayed again.");
+                    info!("New API key generated successfully");
                 }
                 ConfigCommand::RemoveKey { key } => {
                     let hashed_key = hash_api_key(&key);
                     config.remove_api_key(&hashed_key);
                     config.save()?;
-                    println!("API key removed successfully");
+                    info!("API key removed successfully");
                 }
                 ConfigCommand::SetPort { port } => {
                     config.port = port;
                     config.save()?;
-                    println!("Port set successfully");
+                    info!("Port set to {} successfully", port);
                 }
                 ConfigCommand::SetAddress { address } => {
-                    config.listen_address = address;
+                    config.listen_address = address.clone();
                     config.save()?;
-                    println!("Listen address set successfully");
+                    info!("Listen address set to {} successfully", address);
                 }
                 ConfigCommand::List => {
                     println!("Current Configuration:");
