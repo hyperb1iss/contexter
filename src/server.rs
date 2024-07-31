@@ -57,7 +57,7 @@ pub async fn get_project_content(
     if let Some(project_path) = config.projects.get(&project_name) {
         debug!("Gathering context for project: {}", project_name);
         match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
-            Ok(files) => match concatenate_files(files, true) {
+            Ok(files) => match concatenate_files(files) {
                 Ok((content, _)) => HttpResponse::Ok().json(ProjectContentResponse { content }),
                 Err(e) => {
                     error!("Error concatenating files: {}", e);
