@@ -1,113 +1,105 @@
-use actix_web::{web, App, HttpServer, HttpResponse, Responder, HttpRequest};
+use crate::config::Config;
+use crate::contexter::{concatenate_files, gather_relevant_files};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::fs::read_to_string;
-use crate::gather_relevant_files;
 
-#[derive(Deserialize)]
-pub struct FileRequest {
-    pub directory: String,
-    pub extensions: Vec<String>,
-    pub exclude_patterns: Vec<String>,
+pub struct AppState {
+    pub config: Arc<RwLock<Config>>,
 }
 
-#[derive(Deserialize)]
-pub struct ReadFileRequest {
-    pub file_path: String,
+#[derive(Serialize, Deserialize)]
+pub struct ProjectListResponse {
+    pub projects: Vec<String>,
 }
 
-#[derive(Serialize)]
-pub struct ErrorResponse {
-    pub error: String,
-}
-
-#[derive(Serialize)]
-pub struct FileResponse {
-    pub files: Vec<String>,
-}
-
-#[derive(Serialize)]
-pub struct FileContentResponse {
+#[derive(Serialize, Deserialize)]
+pub struct ProjectContentResponse {
     pub content: String,
 }
 
-#[derive(Clone)]
-pub struct ApiKey {
-    pub key: String,
+#[derive(Deserialize)]
+pub struct ApiKeyQuery {
+    pub api_key: String,
 }
 
-async fn authorize(api_key: Arc<RwLock<ApiKey>>, header_key: Option<String>) -> bool {
-    if let Some(header_key) = header_key {
-        if header_key == api_key.read().await.key {
-            return true;
+pub async fn validate_api_key(config: &Config, api_key: &str) -> bool {
+    config.api_keys.contains(&api_key.to_string())
+}
+
+pub async fn list_projects(
+    data: web::Data<AppState>,
+    query: web::Query<ApiKeyQuery>,
+) -> impl Responder {
+    let config = data.config.read().await;
+    if !validate_api_key(&config, &query.api_key).await {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let projects: Vec<String> = config.projects.keys().cloned().collect();
+    HttpResponse::Ok().json(ProjectListResponse { projects })
+}
+
+pub async fn get_project_content(
+    project_name: web::Path<String>,
+    data: web::Data<AppState>,
+    query: web::Query<ApiKeyQuery>,
+) -> impl Responder {
+    let config = data.config.read().await;
+    if !validate_api_key(&config, &query.api_key).await {
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let project_name = project_name.into_inner();
+
+    if let Some(project_path) = config.projects.get(&project_name) {
+        debug!("Gathering context for project: {}", project_name);
+        match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
+            Ok(files) => match concatenate_files(files, true) {
+                Ok((content, _)) => HttpResponse::Ok().json(ProjectContentResponse { content }),
+                Err(e) => {
+                    error!("Error concatenating files: {}", e);
+                    HttpResponse::InternalServerError().finish()
+                }
+            },
+            Err(e) => {
+                error!("Error gathering files: {}", e);
+                HttpResponse::InternalServerError().finish()
+            }
         }
-    }
-    false
-}
-
-async fn handle_get_files(
-    api_key: web::Data<Arc<RwLock<ApiKey>>>,
-    req: web::Json<FileRequest>,
-    headers: HttpRequest,
-) -> impl Responder {
-    let header_key = headers.headers().get("X-API-KEY").and_then(|v| v.to_str().ok());
-
-    if !authorize(api_key.get_ref().clone(), header_key.map(|s| s.to_string())).await {
-        return HttpResponse::Unauthorized().json(ErrorResponse {
-            error: "Unauthorized".to_string(),
-        });
-    }
-
-    let files = gather_relevant_files(
-        &req.directory,
-        req.extensions.iter().map(String::as_str).collect(),
-        req.exclude_patterns.iter().map(String::as_str).collect(),
-    )
-    .unwrap_or_else(|_| Vec::new());
-
-    HttpResponse::Ok().json(FileResponse {
-        files: files.into_iter().map(|p| p.to_string_lossy().to_string()).collect(),
-    })
-}
-
-async fn handle_read_file(
-    api_key: web::Data<Arc<RwLock<ApiKey>>>,
-    req: web::Json<ReadFileRequest>,
-    headers: HttpRequest,
-) -> impl Responder {
-    let header_key = headers.headers().get("X-API-KEY").and_then(|v| v.to_str().ok());
-
-    if !authorize(api_key.get_ref().clone(), header_key.map(|s| s.to_string())).await {
-        return HttpResponse::Unauthorized().json(ErrorResponse {
-            error: "Unauthorized".to_string(),
-        });
-    }
-
-    match read_to_string(&req.file_path) {
-        Ok(content) => HttpResponse::Ok().json(FileContentResponse { content }),
-        Err(_) => HttpResponse::NotFound().json(ErrorResponse {
-            error: "File not found".to_string(),
-        }),
+    } else {
+        HttpResponse::NotFound().body(format!("Project '{}' not found", project_name))
     }
 }
 
-pub async fn run_server(api_key: String) -> std::io::Result<()> {
-    let api_key = Arc::new(RwLock::new(ApiKey { key: api_key }));
+pub async fn run_server(config: Config, quiet: bool, verbose: bool) -> std::io::Result<()> {
+    // Setup logging
+    if verbose {
+        std::env::set_var("RUST_LOG", "debug");
+    } else if !quiet {
+        std::env::set_var("RUST_LOG", "info");
+    }
+    env_logger::init();
+
+    let app_state = web::Data::new(AppState {
+        config: Arc::new(RwLock::new(config)),
+    });
+
+    // Read configuration values before starting the server
+    let listen_address = app_state.config.read().await.listen_address.clone();
+    let port = app_state.config.read().await.port;
+
+    info!("Starting server on {}:{}", listen_address, port);
 
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(api_key.clone()))
-            .service(
-                web::resource("/get-files")
-                    .route(web::post().to(handle_get_files)),
-            )
-            .service(
-                web::resource("/read-file")
-                    .route(web::post().to(handle_read_file)),
-            )
+            .app_data(app_state.clone())
+            .route("/projects", web::get().to(list_projects))
+            .route("/project/{name}", web::get().to(get_project_content))
     })
-    .bind("127.0.0.1:3000")?
+    .bind((listen_address, port))?
     .run()
     .await
 }

@@ -3,10 +3,8 @@ name = "contexter"
 version = "0.1.0"
 edition = "2021"
 
-
 [dependencies]
 glob = "0.3.1"
-clipboard-anywhere = "0.2.3"
 clap = { version = "4.5.11", features = ["derive"] }
 tempfile = "3.10.1"
 ignore = "0.4.22"
@@ -18,3 +16,21 @@ actix-web = "4.8.0"
 serde = { version = "1.0.204", features = ["derive"] }
 tokio = { version = "1.39.2", features = ["full"] }
 structopt = "0.3.26"
+dirs = "5.0"
+serde_json = "1.0"
+
+[dev-dependencies]
+actix-rt = "2.10.0"
+
+
+[features]
+# You can add features here if needed in the future
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[[bin]]
+name = "contexter"
+path = "src/main.rs"

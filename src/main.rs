@@ -1,41 +1,37 @@
-mod server;
-use contexter::{gather_relevant_files, concatenate_files};
-
-
+use contexter::config::Config;
+use contexter::server::run_server;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
+#[structopt(name = "contexter", about = "A context gathering tool for LLMs")]
 struct Cli {
-    #[structopt(short = "s", long = "server")]
-    server: bool,
+    #[structopt(subcommand)]
+    cmd: Command,
+}
 
-    #[structopt(short = "k", long = "key", default_value = "")]
-    key: String,
+#[derive(StructOpt)]
+enum Command {
+    #[structopt(name = "server", about = "Run in server mode")]
+    Server {
+        #[structopt(short, long, help = "Run quietly")]
+        quiet: bool,
 
-    #[structopt(short = "d", long = "directory")]
-    directory: Option<String>,
-
-    #[structopt(short = "e", long = "extensions", use_delimiter = true)]
-    extensions: Vec<String>,
-
-    #[structopt(short = "x", long = "exclude_patterns", use_delimiter = true)]
-    exclude_patterns: Vec<String>,
+        #[structopt(short, long, help = "Verbose output")]
+        verbose: bool,
+    },
+    // Add other commands here as needed
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let args = Cli::from_args();
+    let cli = Cli::from_args();
 
-    if args.server {
-        server::run_server(args.key).await
-    } else {
-        if let Some(directory) = args.directory {
-            let extensions: Vec<&str> = args.extensions.iter().map(String::as_str).collect();
-            let exclude_patterns: Vec<&str> = args.exclude_patterns.iter().map(String::as_str).collect();
-            let relevant_files = gather_relevant_files(&directory, extensions, exclude_patterns)?;
-            let concatenated_files = concatenate_files(relevant_files, true).unwrap();
-            println!("{:?}", concatenated_files);
-        }
-        Ok(())
+    match cli.cmd {
+        Command::Server { quiet, verbose } => {
+            let config = Config::load().expect("Failed to load configuration");
+            run_server(config, quiet, verbose).await?;
+        } // Handle other commands here
     }
+
+    Ok(())
 }

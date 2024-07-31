@@ -1,8 +1,7 @@
+use contexter::contexter::{concatenate_files, gather_relevant_files};
 use std::fs::File;
 use std::io::Write;
 use tempfile::tempdir;
-use clipboard_anywhere::{set_clipboard, get_clipboard};
-use contexter::{gather_relevant_files, concatenate_files};
 
 fn create_test_files(dir_path: &std::path::Path) -> std::io::Result<()> {
     let file1_path = dir_path.join("test1.txt");
@@ -31,7 +30,7 @@ fn test_gather_relevant_files_basic() -> std::io::Result<()> {
     create_test_files(dir_path)?;
 
     let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
-    
+
     assert_eq!(files.len(), 3); // test1.txt, test2.rs, test3.txt
     assert!(files.iter().any(|f| f.ends_with("test1.txt")));
     assert!(files.iter().any(|f| f.ends_with("test2.rs")));
@@ -85,9 +84,15 @@ fn test_file_order_and_sections() -> std::io::Result<()> {
     let (content, _) = concatenate_files(files, false)?;
 
     let content_lines: Vec<&str> = content.lines().collect();
-    let file1_index = content_lines.iter().position(|&r| r.contains("test1.txt")).unwrap();
-    let file2_index = content_lines.iter().position(|&r| r.contains("test2.rs")).unwrap();
-    
+    let file1_index = content_lines
+        .iter()
+        .position(|&r| r.contains("test1.txt"))
+        .unwrap();
+    let file2_index = content_lines
+        .iter()
+        .position(|&r| r.contains("test2.rs"))
+        .unwrap();
+
     assert!(file2_index < file1_index, "File order is incorrect");
     assert!(content.contains("Section: Source Files"));
     assert!(content.contains("Section: Documentation"));
@@ -103,7 +108,7 @@ fn test_exclusion_patterns() -> std::io::Result<()> {
 
     // Exclude .txt files
     let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![".*\\.txt"])?;
-    
+
     assert_eq!(files.len(), 1); // Only test2.rs should remain
     assert!(files.iter().any(|f| f.ends_with("test2.rs")));
     assert!(!files.iter().any(|f| f.ends_with(".txt")));
@@ -123,8 +128,10 @@ fn test_built_in_exclusions() -> std::io::Result<()> {
     File::create(node_modules_path.join("package.json"))?;
 
     let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
-    
-    assert!(!files.iter().any(|f| f.to_str().unwrap().contains("node_modules")));
+
+    assert!(!files
+        .iter()
+        .any(|f| f.to_str().unwrap().contains("node_modules")));
     assert!(!files.iter().any(|f| f.ends_with(".gitignore")));
 
     Ok(())
@@ -142,25 +149,8 @@ fn test_binary_file_skipping() -> std::io::Result<()> {
     binary_file.write_all(&[0u8; 1024])?;
 
     let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
-    
+
     assert!(!files.iter().any(|f| f.ends_with("binary_file.bin")));
-
-    Ok(())
-}
-
-#[test]
-fn test_clipboard_functionality() -> std::io::Result<()> {
-    let dir = tempdir()?;
-    let dir_path = dir.path();
-    create_test_files(dir_path)?;
-
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
-    let (content, _) = concatenate_files(files, false)?;
-
-    set_clipboard(&content).expect("Failed to set clipboard");
-    let clipboard_content = get_clipboard().expect("Failed to get clipboard");
-    
-    assert_eq!(content.trim(), clipboard_content.trim(), "Clipboard content does not match");
 
     Ok(())
 }
