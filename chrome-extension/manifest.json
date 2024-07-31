@@ -2,15 +2,15 @@
     "manifest_version": 3,
     "name": "Contexter",
     "version": "1.0",
-    "description": "Copy project contents into an LLM using the Contexter server.",
+    "description": "Fetch and manage project contents using the Contexter server.",
     "permissions": [
       "activeTab",
       "storage",
-      "scripting"
+      "clipboardWrite"
     ],
-    "background": {
-      "service_worker": "scripts/background.js"
-    },
+    "host_permissions": [
+      "http://localhost:3030/*"
+    ],
     "action": {
       "default_popup": "popup.html",
       "default_icon": {
@@ -24,5 +24,14 @@
       "48": "assets/icon48.png",
       "128": "assets/icon128.png"
     },
-    "options_page": "settings.html"
+    "options_page": "settings.html",
+    "background": {
+      "service_worker": "scripts/background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "css": ["styles/styles.css"]
+      }
+    ]
   }

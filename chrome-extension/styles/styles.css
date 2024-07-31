@@ -1,15 +1,124 @@
 body {
     font-family: Arial, sans-serif;
-    padding: 10px;
-  }
-  
-  h1 {
-    font-size: 1.5em;
-    margin-bottom: 10px;
-  }
-  
-  button {
-    padding: 10px;
-    font-size: 1em;
+    padding: 20px;
+    width: 400px;
+}
+
+h1, h2, h3, h4 {
+    margin-top: 0;
+}
+
+ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#projects li {
     cursor: pointer;
-  }
+    padding: 5px;
+    margin-bottom: 5px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+}
+
+#projects li:hover {
+    background-color: #e0e0e0;
+}
+
+button {
+    margin-right: 10px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+#content-display {
+    width: 100%;
+    margin-top: 10px;
+    resize: vertical;
+}
+
+#status-message {
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.collapsible-toggle {
+    background-color: #f1f1f1;
+    color: #444;
+    cursor: pointer;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    text-align: left;
+    outline: none;
+    font-size: 15px;
+    transition: background-color 0.3s ease;
+}
+
+.collapsible-toggle:hover {
+    background-color: #ddd;
+}
+
+.collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background-color: #f9f9f9;
+}
+
+.collapsible-content.open {
+    max-height: 300px;
+    transition: max-height 0.5s ease-in;
+}
+
+#file-tree {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.file-tree-item {
+    margin-bottom: 5px;
+}
+
+.file-tree-item label {
+    display: inline-block;
+    margin-left: 5px;
+    cursor: pointer;
+}
+
+.file-tree-folder > label {
+    font-weight: bold;
+}
+
+.file-tree-folder > label::before {
+    content: '▶';
+    display: inline-block;
+    margin-right: 5px;
+    transition: transform 0.3s ease;
+}
+
+.file-tree-folder.open > label::before {
+    transform: rotate(90deg);
+}
+
+.file-tree-folder-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.file-tree-folder-content.open {
+    max-height: 1000px; /* Adjust this value based on your needs */
+    transition: max-height 0.5s ease-in;
+}
+
+/* Checkbox styles */
+.file-tree-item input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+/* Indent nested items */
+.file-tree-folder-content .file-tree-item {
+    margin-left: 20px;
+}

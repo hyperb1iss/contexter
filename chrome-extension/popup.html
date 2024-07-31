@@ -1,11 +1,34 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <link rel="stylesheet" type="text/css" href="styles/popup.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contexter</title>
+    <link rel="stylesheet" href="styles/styles.css">
 </head>
 <body>
-  <h1>Contexter</h1>
-  <button id="fetch-project">Fetch Project Contents</button>
-  <script src="scripts/popup.js"></script>
+    <h1>Contexter</h1>
+    <div id="project-list">
+        <h2>Projects</h2>
+        <ul id="projects"></ul>
+    </div>
+    <div id="project-metadata" style="display: none;">
+        <h2>Project Metadata</h2>
+        <h3 id="project-name"></h3>
+        <p id="project-path"></p>
+        <div class="collapsible">
+            <button type="button" class="collapsible-toggle">Files</button>
+            <div class="collapsible-content">
+                <div id="file-tree"></div>
+            </div>
+        </div>
+    </div>
+    <div id="content-actions" style="display: none;">
+        <button id="fetch-content">Fetch Content</button>
+        <button id="copy-content">Copy to Clipboard</button>
+    </div>
+    <textarea id="content-display" style="display: none;" rows="10" cols="50" readonly></textarea>
+    <div id="status-message"></div>
+    <script src="scripts/popup.js"></script>
 </body>
 </html>
