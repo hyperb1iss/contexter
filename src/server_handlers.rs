@@ -93,7 +93,7 @@ pub async fn get_project_metadata(
 pub async fn run_contexter(
     req: HttpRequest,
     project_name: web::Path<String>,
-    contexter_req: web::Json<ContexterRequest>,
+    contexter_req: web::Json<Option<ContexterRequest>>,
     data: web::Data<AppState>,
 ) -> impl Responder {
     let config = data.config.read().await;
@@ -107,19 +107,33 @@ pub async fn run_contexter(
 
     if let Some(project_path) = config.projects.get(&project_name) {
         let base_path = project_path.clone();
-        let files_to_process = if let Some(paths) = &contexter_req.paths {
-            debug!(
-                "Running contexter on specific paths for project: {}",
-                project_name
-            );
-            paths
-                .iter()
-                .flat_map(|p| {
-                    let full_path = base_path.join(p);
-                    gather_relevant_files(full_path.to_str().unwrap(), vec![], vec![])
-                        .unwrap_or_default()
-                })
-                .collect()
+        let files_to_process = if let Some(ContexterRequest { paths }) = contexter_req.into_inner()
+        {
+            if let Some(paths) = paths {
+                debug!(
+                    "Running contexter on specific paths for project: {}",
+                    project_name
+                );
+                paths
+                    .iter()
+                    .flat_map(|p| {
+                        let full_path = base_path.join(p);
+                        gather_relevant_files(full_path.to_str().unwrap(), vec![], vec![])
+                            .unwrap_or_default()
+                    })
+                    .collect()
+            } else {
+                debug!("Running contexter on entire project: {}", project_name);
+                match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
+                    Ok(files) => files,
+                    Err(e) => {
+                        error!("Error gathering files for project {}: {}", project_name, e);
+                        return HttpResponse::InternalServerError().json(ErrorResponse {
+                            error: "Failed to gather files".to_string(),
+                        });
+                    }
+                }
+            }
         } else {
             debug!("Running contexter on entire project: {}", project_name);
             match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {

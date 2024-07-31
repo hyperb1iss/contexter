@@ -1,24 +1,24 @@
-# Contexter Server Documentation
+### Contexter Server Documentation
 
 The Contexter server provides a RESTful API for managing and retrieving project contexts. This document outlines the available endpoints and how to interact with them.
 
-## API Version
+#### API Version
 
 The current API version is v1. All endpoints are prefixed with `/api/v1/`.
 
-## Authentication
+#### Authentication
 
 All API endpoints require authentication using an API key. The API key should be included in the `X-API-Key` header of each request.
 
 To generate a new API key, use the following command:
 
 ```bash
-contexter config generate-key
+contexter config generate-key <name>
 ```
 
-## Endpoints
+#### Endpoints
 
-### List Projects
+##### List Projects
 
 Retrieves a list of all available projects.
 
@@ -51,7 +51,7 @@ curl -X GET "http://localhost:3030/api/v1/projects" \
 }
 ```
 
-### Get Project Metadata
+##### Get Project Metadata
 
 Retrieves metadata for a specific project, including the list of files.
 
@@ -73,15 +73,11 @@ curl -X GET "http://localhost:3030/api/v1/projects/project1" \
 {
   "name": "project1",
   "path": "/path/to/project1",
-  "files": [
-    "file1.rs",
-    "file2.rs",
-    "subfolder/file3.rs"
-  ]
+  "files": ["file1.rs", "file2.rs", "subfolder/file3.rs"]
 }
 ```
 
-### Run Contexter
+##### Run Contexter
 
 Runs the Contexter on a project, optionally specifying paths to include.
 
@@ -96,15 +92,24 @@ Runs the Contexter on a project, optionally specifying paths to include.
     "paths": ["file1.rs", "subfolder", "file2.rs"]
   }
   ```
-  If no body is provided, the contexter will run on the entire project.
+  If no body is provided, the Contexter will run on the entire project.
 
-**Example curl command:**
+**Example curl command with paths:**
 
 ```bash
 curl -X POST "http://localhost:3030/api/v1/projects/project1" \
      -H "X-API-Key: your_api_key_here" \
      -H "Content-Type: application/json" \
      -d '{"paths": ["file1.rs", "subfolder"]}'
+```
+
+**Example curl command without paths:**
+
+```bash
+curl -X POST "http://localhost:3030/api/v1/projects/project1" \
+     -H "X-API-Key: your_api_key_here" \
+     -H "Content-Type: application/json" \
+     -d '{}'
 ```
 
 **Example response:**
@@ -115,7 +120,7 @@ curl -X POST "http://localhost:3030/api/v1/projects/project1" \
 }
 ```
 
-## Error Handling
+#### Error Handling
 
 The API uses standard HTTP status codes to indicate the success or failure of requests. In case of an error, the response will include a JSON object with an `error` field containing a description of the error.
 
@@ -135,9 +140,9 @@ Common status codes:
 - 404 Not Found: Requested resource not found
 - 500 Internal Server Error: Server-side error
 
-## Server Management
+#### Server Management
 
-### Starting the Server
+##### Starting the Server
 
 To start the Contexter server, use the following command:
 
@@ -146,10 +151,11 @@ contexter server
 ```
 
 You can add the following flags:
+
 - `--quiet`: Run the server in quiet mode (minimal output)
 - `--verbose`: Run the server in verbose mode (debug output)
 
-### Configuring the Server
+##### Configuring the Server
 
 You can configure the server using the following commands:
 
@@ -170,6 +176,6 @@ contexter config remove-project project_name
 contexter config list
 ```
 
-## API Versioning
+#### API Versioning
 
 The current API version is v1. All endpoints are prefixed with `/api/v1/`. Future versions of the API may introduce changes or new features and will use a different version prefix (e.g., `/api/v2/`).
