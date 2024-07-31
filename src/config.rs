@@ -48,14 +48,14 @@ impl Config {
         self.projects.remove(name)
     }
 
-    pub fn add_api_key(&mut self, key: String) {
-        if !self.api_keys.contains(&key) {
-            self.api_keys.push(key);
+    pub fn add_api_key(&mut self, hashed_key: String) {
+        if !self.api_keys.contains(&hashed_key) {
+            self.api_keys.push(hashed_key);
         }
     }
 
-    pub fn remove_api_key(&mut self, key: &str) {
-        self.api_keys.retain(|k| k != key);
+    pub fn remove_api_key(&mut self, hashed_key: &str) {
+        self.api_keys.retain(|k| k != hashed_key);
     }
 
     fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {

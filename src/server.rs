@@ -1,8 +1,10 @@
 use crate::config::Config;
 use crate::contexter::{concatenate_files, gather_relevant_files};
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use constant_time_eq::constant_time_eq;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -20,21 +22,27 @@ pub struct ProjectContentResponse {
     pub content: String,
 }
 
-#[derive(Deserialize)]
-pub struct ApiKeyQuery {
-    pub api_key: String,
+fn hash_api_key(key: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(key.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 pub async fn validate_api_key(config: &Config, api_key: &str) -> bool {
-    config.api_keys.contains(&api_key.to_string())
+    let hashed_key = hash_api_key(api_key);
+    config
+        .api_keys
+        .iter()
+        .any(|stored_key| constant_time_eq(stored_key.as_bytes(), hashed_key.as_bytes()))
 }
 
-pub async fn list_projects(
-    data: web::Data<AppState>,
-    query: web::Query<ApiKeyQuery>,
-) -> impl Responder {
+pub async fn list_projects(req: HttpRequest, data: web::Data<AppState>) -> impl Responder {
     let config = data.config.read().await;
-    if !validate_api_key(&config, &query.api_key).await {
+    if let Some(api_key) = req.headers().get("X-API-Key") {
+        if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
+            return HttpResponse::Unauthorized().finish();
+        }
+    } else {
         return HttpResponse::Unauthorized().finish();
     }
 
@@ -43,12 +51,16 @@ pub async fn list_projects(
 }
 
 pub async fn get_project_content(
+    req: HttpRequest,
     project_name: web::Path<String>,
     data: web::Data<AppState>,
-    query: web::Query<ApiKeyQuery>,
 ) -> impl Responder {
     let config = data.config.read().await;
-    if !validate_api_key(&config, &query.api_key).await {
+    if let Some(api_key) = req.headers().get("X-API-Key") {
+        if !validate_api_key(&config, api_key.to_str().unwrap_or("")).await {
+            return HttpResponse::Unauthorized().finish();
+        }
+    } else {
         return HttpResponse::Unauthorized().finish();
     }
 

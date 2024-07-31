@@ -3,6 +3,10 @@ use contexter::contexter::{concatenate_files, gather_relevant_files};
 use contexter::server::run_server;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use rand::rngs::OsRng;
+use rand::RngCore;
+use sha2::{Sha256, Digest};
+use base64::{Engine as _, engine::general_purpose};
 
 #[derive(StructOpt)]
 #[structopt(name = "contexter", about = "A context gathering tool for LLMs")]
@@ -48,11 +52,8 @@ enum ConfigCommand {
         #[structopt(help = "Project name")]
         name: String,
     },
-    #[structopt(name = "add-key", about = "Add an API key")]
-    AddKey {
-        #[structopt(help = "API key")]
-        key: String,
-    },
+    #[structopt(name = "generate-key", about = "Generate a new API key")]
+    GenerateKey,
     #[structopt(name = "remove-key", about = "Remove an API key")]
     RemoveKey {
         #[structopt(help = "API key")]
@@ -70,6 +71,18 @@ enum ConfigCommand {
     },
     #[structopt(name = "list", about = "List current configuration")]
     List,
+}
+
+fn generate_api_key() -> String {
+    let mut key = [0u8; 32];
+    OsRng.fill_bytes(&mut key);
+    general_purpose::URL_SAFE_NO_PAD.encode(key)
+}
+
+fn hash_api_key(key: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(key.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 #[actix_web::main]
@@ -110,13 +123,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("Project not found");
                     }
                 }
-                ConfigCommand::AddKey { key } => {
-                    config.add_api_key(key);
+                ConfigCommand::GenerateKey => {
+                    let new_key = generate_api_key();
+                    let hashed_key = hash_api_key(&new_key);
+                    config.add_api_key(hashed_key);
                     config.save()?;
-                    println!("API key added successfully");
+                    println!("New API key generated: {}", new_key);
+                    println!("Please store this key securely. It won't be displayed again.");
                 }
                 ConfigCommand::RemoveKey { key } => {
-                    config.remove_api_key(&key);
+                    let hashed_key = hash_api_key(&key);
+                    config.remove_api_key(&hashed_key);
                     config.save()?;
                     println!("API key removed successfully");
                 }
@@ -138,7 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for (name, path) in &config.projects {
                         println!("  {}: {:?}", name, path);
                     }
-                    println!("API Keys:");
+                    println!("API Keys (hashed):");
                     for key in &config.api_keys {
                         println!("  {}", key);
                     }
