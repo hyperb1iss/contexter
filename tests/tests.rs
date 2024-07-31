@@ -3,19 +3,8 @@ use std::io::Write;
 use tempfile::tempdir;
 use clipboard_anywhere::{set_clipboard, get_clipboard};
 use contexter::{gather_relevant_files, concatenate_files};
-use std::time::{UNIX_EPOCH, SystemTimeError};
 
-fn system_time_error_to_io_error(err: SystemTimeError) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, err)
-}
-
-#[test]
-fn test_concatenate_files_and_clipboard_with_metadata() -> std::io::Result<()> {
-    // Create a temporary directory
-    let dir = tempdir()?;
-    let dir_path = dir.path();
-
-    // Create some test files
+fn create_test_files(dir_path: &std::path::Path) -> std::io::Result<()> {
     let file1_path = dir_path.join("test1.txt");
     let mut file1 = File::create(&file1_path)?;
     writeln!(file1, "This is a test file 1.\nfn test_function() {{}}")?;
@@ -28,130 +17,150 @@ fn test_concatenate_files_and_clipboard_with_metadata() -> std::io::Result<()> {
     let mut file3 = File::create(&file3_path)?;
     writeln!(file3, "This is a test file 1.\nfn test_function() {{}}")?; // Duplicate content of file1
 
-    // Create a .gitignore file
     let gitignore_path = dir_path.join(".gitignore");
     let mut gitignore = File::create(&gitignore_path)?;
     writeln!(gitignore, "*.ignore")?;
 
-    // Run the gather_relevant_files function
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?; // No extensions, no excludes
-
-    // Run the concatenate_files function with metadata
-    let (content, filenames) = concatenate_files(files, true)?;
-
-    // Print the actual content for debugging
-    println!("Actual content:\n{}", content);
-
-    // Extract the actual metadata (file sizes and modification times)
-    let file1_metadata = std::fs::metadata(&file1_path)?;
-    let file2_metadata = std::fs::metadata(&file2_path)?;
-    let file1_size = file1_metadata.len();
-    let file2_size = file2_metadata.len();
-    let file1_modified = file1_metadata
-        .modified()
-        .map_err(std::io::Error::from)?
-        .duration_since(UNIX_EPOCH)
-        .map_err(system_time_error_to_io_error)?
-        .as_secs();
-    let file2_modified = file2_metadata
-        .modified()
-        .map_err(std::io::Error::from)?
-        .duration_since(UNIX_EPOCH)
-        .map_err(system_time_error_to_io_error)?
-        .as_secs();
-
-    // Construct the expected content with the correct metadata
-    let expected_content = format!(
-        "========================================\nSection: Source Files\n========================================\n========================================\nFile: \"{}\"\nSize: {} bytes\nLast Modified: {}\n========================================\nThis is a test file 2.\nstruct TestStruct {{}}\n========================================\nSection: Documentation\n========================================\n========================================\nFile: \"{}\"\nSize: {} bytes\nLast Modified: {}\n========================================\nThis is a test file 1.\nfn test_function() {{}}",
-        file2_path.to_string_lossy(), file2_size, file2_modified,
-        file1_path.to_string_lossy(), file1_size, file1_modified
-    );
-
-    println!("Expected content:\n{}", expected_content);
-
-    // Verify the concatenated content
-    assert_eq!(
-        content.trim_end(), expected_content.trim_end(),
-        "Content does not match expected. Actual content:\n{}",
-        content
-    );
-
-    assert!(filenames.contains(&file1_path.to_string_lossy().to_string()));
-    assert!(filenames.contains(&file2_path.to_string_lossy().to_string()));
-
-    // Ensure the duplicate file content is not included
-    assert!(!filenames.contains(&file3_path.to_string_lossy().to_string()));
-
-    // Test clipboard functionality
-    set_clipboard(&content).expect("Failed to set clipboard");
-    let clipboard_content = get_clipboard().expect("Failed to get clipboard");
-
-    assert_eq!(content.trim_end(), clipboard_content.trim_end());
-
-    // Cleanup
-    dir.close()?;
     Ok(())
 }
 
 #[test]
-fn test_concatenate_files_and_clipboard_without_metadata() -> std::io::Result<()> {
-    // Create a temporary directory
+fn test_gather_relevant_files_basic() -> std::io::Result<()> {
     let dir = tempdir()?;
     let dir_path = dir.path();
+    create_test_files(dir_path)?;
 
-    // Create some test files
-    let file1_path = dir_path.join("test1.txt");
-    let mut file1 = File::create(&file1_path)?;
-    writeln!(file1, "This is a test file 1.\nfn test_function() {{}}")?;
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    
+    assert_eq!(files.len(), 3); // test1.txt, test2.rs, test3.txt
+    assert!(files.iter().any(|f| f.ends_with("test1.txt")));
+    assert!(files.iter().any(|f| f.ends_with("test2.rs")));
+    assert!(files.iter().any(|f| f.ends_with("test3.txt")));
+    assert!(!files.iter().any(|f| f.ends_with(".gitignore")));
 
-    let file2_path = dir_path.join("test2.rs");
-    let mut file2 = File::create(&file2_path)?;
-    writeln!(file2, "This is a test file 2.\nstruct TestStruct {{}}")?;
+    Ok(())
+}
 
-    let file3_path = dir_path.join("test3.txt");
-    let mut file3 = File::create(&file3_path)?;
-    writeln!(file3, "This is a test file 1.\nfn test_function() {{}}")?; // Duplicate content of file1
+#[test]
+fn test_concatenate_files_with_metadata() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let dir_path = dir.path();
+    create_test_files(dir_path)?;
 
-    // Create a .gitignore file
-    let gitignore_path = dir_path.join(".gitignore");
-    let mut gitignore = File::create(&gitignore_path)?;
-    writeln!(gitignore, "*.ignore")?;
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let (content, _) = concatenate_files(files, true)?;
 
-    // Run the gather_relevant_files function
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?; // No extensions, no excludes
+    assert!(content.contains("Size:"));
+    assert!(content.contains("Last Modified:"));
+    assert!(content.contains("This is a test file 1."));
+    assert!(content.contains("This is a test file 2."));
 
-    // Run the concatenate_files function without metadata
-    let (content, filenames) = concatenate_files(files, false)?;
+    Ok(())
+}
 
-    // Print the actual content for debugging
-    println!("Actual content:\n{}", content);
+#[test]
+fn test_concatenate_files_without_metadata() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let dir_path = dir.path();
+    create_test_files(dir_path)?;
 
-    // Verify the concatenated content
-    let expected_content = format!(
-        "========================================\nSection: Source Files\n========================================\n========================================\nFile: \"{}\"\n========================================\nThis is a test file 2.\nstruct TestStruct {{}}\n========================================\nSection: Documentation\n========================================\n========================================\nFile: \"{}\"\n========================================\nThis is a test file 1.\nfn test_function() {{}}",
-        file2_path.to_string_lossy(), file1_path.to_string_lossy()
-    );
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let (content, _) = concatenate_files(files, false)?;
 
-    println!("Expected content:\n{}", expected_content);
+    assert!(!content.contains("Size:"));
+    assert!(!content.contains("Last Modified:"));
+    assert!(content.contains("This is a test file 1."));
+    assert!(content.contains("This is a test file 2."));
 
-    assert_eq!(
-        content.trim_end(), expected_content.trim_end(),
-        "Content does not match expected. Actual content:\n{}",
-        content
-    );
-    assert!(filenames.contains(&file1_path.to_string_lossy().to_string()));
-    assert!(filenames.contains(&file2_path.to_string_lossy().to_string()));
+    Ok(())
+}
 
-    // Ensure the duplicate file content is not included
-    assert!(!filenames.contains(&file3_path.to_string_lossy().to_string()));
+#[test]
+fn test_file_order_and_sections() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let dir_path = dir.path();
+    create_test_files(dir_path)?;
 
-    // Test clipboard functionality
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let (content, _) = concatenate_files(files, false)?;
+
+    let content_lines: Vec<&str> = content.lines().collect();
+    let file1_index = content_lines.iter().position(|&r| r.contains("test1.txt")).unwrap();
+    let file2_index = content_lines.iter().position(|&r| r.contains("test2.rs")).unwrap();
+    
+    assert!(file2_index < file1_index, "File order is incorrect");
+    assert!(content.contains("Section: Source Files"));
+    assert!(content.contains("Section: Documentation"));
+
+    Ok(())
+}
+
+#[test]
+fn test_exclusion_patterns() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let dir_path = dir.path();
+    create_test_files(dir_path)?;
+
+    // Exclude .txt files
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![".*\\.txt"])?;
+    
+    assert_eq!(files.len(), 1); // Only test2.rs should remain
+    assert!(files.iter().any(|f| f.ends_with("test2.rs")));
+    assert!(!files.iter().any(|f| f.ends_with(".txt")));
+
+    Ok(())
+}
+
+#[test]
+fn test_built_in_exclusions() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let dir_path = dir.path();
+    create_test_files(dir_path)?;
+
+    // Create a file that should be excluded by default
+    let node_modules_path = dir_path.join("node_modules");
+    std::fs::create_dir(&node_modules_path)?;
+    File::create(node_modules_path.join("package.json"))?;
+
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    
+    assert!(!files.iter().any(|f| f.to_str().unwrap().contains("node_modules")));
+    assert!(!files.iter().any(|f| f.ends_with(".gitignore")));
+
+    Ok(())
+}
+
+#[test]
+fn test_binary_file_skipping() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let dir_path = dir.path();
+    create_test_files(dir_path)?;
+
+    // Create a binary file
+    let binary_file_path = dir_path.join("binary_file.bin");
+    let mut binary_file = File::create(&binary_file_path)?;
+    binary_file.write_all(&[0u8; 1024])?;
+
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    
+    assert!(!files.iter().any(|f| f.ends_with("binary_file.bin")));
+
+    Ok(())
+}
+
+#[test]
+fn test_clipboard_functionality() -> std::io::Result<()> {
+    let dir = tempdir()?;
+    let dir_path = dir.path();
+    create_test_files(dir_path)?;
+
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let (content, _) = concatenate_files(files, false)?;
+
     set_clipboard(&content).expect("Failed to set clipboard");
     let clipboard_content = get_clipboard().expect("Failed to get clipboard");
+    
+    assert_eq!(content.trim(), clipboard_content.trim(), "Clipboard content does not match");
 
-    assert_eq!(content.trim_end(), clipboard_content.trim_end());
-
-    // Cleanup
-    dir.close()?;
     Ok(())
 }

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::fs::{read_to_string, metadata};
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::hash::{Hasher, Hash};
 use std::collections::hash_map::DefaultHasher;
 use ignore::WalkBuilder;
@@ -12,9 +12,24 @@ fn system_time_error_to_io_error(err: SystemTimeError) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, err)
 }
 
-pub fn gather_relevant_files(directory: &str, extensions: Vec<&str>, excludes: Vec<&str>) -> io::Result<Vec<PathBuf>> {
+pub fn gather_relevant_files(directory: &str, extensions: Vec<&str>, mut excludes: Vec<&str>) -> io::Result<Vec<PathBuf>> {
     let project_dir = PathBuf::from(directory);
     let mut relevant_files = Vec::new();
+
+    // Add built-in exclusions
+    excludes.extend_from_slice(&[
+        r"\.git",
+        r"\.svn",
+        r"\.hg",
+        r"\.DS_Store",
+        r"node_modules",
+        r"target",
+        r"build",
+        r"dist",
+        r"\.vscode",
+        r"\.idea",
+        r"\.vs",
+    ]);
 
     let walker = WalkBuilder::new(&project_dir)
         .add_custom_ignore_filename(".gitignore")
@@ -29,7 +44,8 @@ pub fn gather_relevant_files(directory: &str, extensions: Vec<&str>, excludes: V
             Ok(entry) => {
                 if entry.file_type().map_or(false, |ft| ft.is_file()) {
                     let path = entry.path();
-                    if !exclude_patterns.iter().any(|re| re.is_match(&path.to_string_lossy())) &&
+                    if !is_excluded(path, &exclude_patterns) &&
+                       !is_likely_binary(path)? &&
                        (extensions.is_empty() || extensions.iter().any(|ext| path.extension().and_then(|e| e.to_str()) == Some(ext))) {
                         relevant_files.push(entry.into_path());
                     }
@@ -37,19 +53,44 @@ pub fn gather_relevant_files(directory: &str, extensions: Vec<&str>, excludes: V
             }
             Err(err) => {
                 eprintln!("Error reading file: {}", err);
-                if let Some(inner_err) = err.io_error() {
-                    if inner_err.kind() == io::ErrorKind::PermissionDenied {
-                        eprintln!("Permission denied while accessing {:?}", err);
-                    }
-                } else {
-                    eprintln!("Other error occurred: {:?}", err);
-                }
             }
         }
     }
 
     relevant_files.sort();
     Ok(relevant_files)
+}
+
+fn is_excluded(path: &Path, exclude_patterns: &[Regex]) -> bool {
+    let path_str = path.to_string_lossy();
+    exclude_patterns.iter().any(|re| re.is_match(&path_str))
+}
+
+fn is_likely_binary(path: &Path) -> io::Result<bool> {
+    // List of common binary file extensions
+    const BINARY_EXTENSIONS: &[&str] = &[
+        "exe", "dll", "so", "dylib", "bin", "obj", "o",
+        "a", "lib", "pyc", "pyd", "pyo",
+        "jpg", "jpeg", "png", "gif", "bmp", "tiff", "ico",
+        "mp3", "mp4", "avi", "mov", "wmv", "flv",
+        "zip", "tar", "gz", "rar", "7z",
+        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+    ];
+
+    // Check if the file has a known binary extension
+    if let Some(ext) = path.extension() {
+        if BINARY_EXTENSIONS.contains(&ext.to_str().unwrap_or("")) {
+            return Ok(true);
+        }
+    }
+
+    // If not a known binary extension, check the file content
+    let mut file = std::fs::File::open(path)?;
+    let mut buffer = [0; 1024];
+    let bytes_read = std::io::Read::read(&mut file, &mut buffer)?;
+
+    // Check if the file contains null bytes, which is a good indicator of binary content
+    Ok(buffer[..bytes_read].contains(&0))
 }
 
 pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
