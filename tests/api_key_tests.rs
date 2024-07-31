@@ -1,6 +1,7 @@
+use actix_web::test;
 use base64::{engine::general_purpose, Engine as _};
 use contexter::config::Config;
-use contexter::server::validate_api_key;
+use contexter::utils::validate_api_key;
 use rand::rngs::OsRng;
 use rand::RngCore;
 use sha2::{Digest, Sha256};
@@ -17,8 +18,8 @@ fn hash_api_key(key: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
-#[test]
-fn test_api_key_generation() {
+#[tokio::test]
+async fn test_api_key_generation() {
     let key = generate_api_key();
     assert_eq!(key.len(), 43); // Base64 encoding of 32 bytes
     assert!(key
@@ -26,8 +27,8 @@ fn test_api_key_generation() {
         .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
 }
 
-#[test]
-fn test_api_key_hashing() {
+#[tokio::test]
+async fn test_api_key_hashing() {
     let key = "test_key";
     let hashed_key = hash_api_key(key);
     assert_eq!(hashed_key.len(), 64); // SHA-256 hash is 32 bytes, hex-encoded to 64 characters
@@ -41,12 +42,20 @@ async fn test_api_key_validation() {
     let hashed_key = hash_api_key(&key);
     config.add_api_key(hashed_key);
 
-    assert!(validate_api_key(&config, &key).await);
-    assert!(!validate_api_key(&config, "invalid_key").await);
+    let req = test::TestRequest::default()
+        .insert_header(("X-API-Key", key.as_str()))
+        .to_http_request();
+    assert!(validate_api_key(&req, &config).await);
+
+    let invalid_key = "invalid_key";
+    let req = test::TestRequest::default()
+        .insert_header(("X-API-Key", invalid_key))
+        .to_http_request();
+    assert!(!validate_api_key(&req, &config).await);
 }
 
-#[test]
-fn test_multiple_api_keys() {
+#[tokio::test]
+async fn test_multiple_api_keys() {
     let mut config = Config::default();
     let key1 = generate_api_key();
     let key2 = generate_api_key();
@@ -61,8 +70,8 @@ fn test_multiple_api_keys() {
     assert!(config.api_keys.contains(&hashed_key2));
 }
 
-#[test]
-fn test_remove_api_key() {
+#[tokio::test]
+async fn test_remove_api_key() {
     let mut config = Config::default();
     let key = generate_api_key();
     let hashed_key = hash_api_key(&key);

@@ -1,4 +1,6 @@
+use crate::cli_handlers;
 use crate::config::Config;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -11,6 +13,18 @@ pub enum Cli {
 
         #[structopt(short, long, help = "Verbose output")]
         verbose: bool,
+    },
+
+    #[structopt(name = "gather", about = "Gather context from files")]
+    Gather {
+        #[structopt(parse(from_os_str))]
+        directory: PathBuf,
+
+        #[structopt(short, long, help = "File extensions to include")]
+        extensions: Vec<String>,
+
+        #[structopt(short, long, help = "Patterns to ignore")]
+        ignore: Vec<String>,
     },
 
     #[structopt(name = "config", about = "Manage configuration")]
@@ -28,7 +42,7 @@ pub enum ConfigCommand {
         name: String,
 
         #[structopt(help = "Project path")]
-        path: std::path::PathBuf,
+        path: PathBuf,
     },
 
     #[structopt(name = "remove-project", about = "Remove a project")]
@@ -37,11 +51,8 @@ pub enum ConfigCommand {
         name: String,
     },
 
-    #[structopt(name = "add-key", about = "Add an API key")]
-    AddKey {
-        #[structopt(help = "API key")]
-        key: String,
-    },
+    #[structopt(name = "generate-key", about = "Generate a new API key")]
+    GenerateKey,
 
     #[structopt(name = "remove-key", about = "Remove an API key")]
     RemoveKey {
@@ -60,53 +71,49 @@ pub enum ConfigCommand {
         #[structopt(help = "Listen address")]
         address: String,
     },
+
+    #[structopt(name = "list", about = "List current configuration")]
+    List,
 }
 
-pub fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::from_args();
     let mut config = Config::load()?;
 
     match cli {
-        Cli::Server { quiet, verbose } => {
-            // TODO: Implement server logic
-            println!("Running server (quiet: {}, verbose: {})", quiet, verbose);
+        Cli::Server {
+            quiet: _,
+            verbose: _,
+        } => {
+            // Server logic will be handled in main.rs
+            Ok(())
         }
+        Cli::Gather {
+            directory,
+            extensions,
+            ignore,
+        } => cli_handlers::handle_gather(directory, extensions, ignore),
         Cli::Config { cmd } => match cmd {
             ConfigCommand::AddProject { name, path } => {
-                config.add_project(name, path);
-                config.save()?;
-                println!("Project added successfully");
+                cli_handlers::handle_config_add_project(&mut config, name, path)
             }
             ConfigCommand::RemoveProject { name } => {
-                if config.remove_project(&name).is_some() {
-                    config.save()?;
-                    println!("Project removed successfully");
-                } else {
-                    println!("Project not found");
-                }
+                cli_handlers::handle_config_remove_project(&mut config, name)
             }
-            ConfigCommand::AddKey { key } => {
-                config.add_api_key(key);
-                config.save()?;
-                println!("API key added successfully");
-            }
+            ConfigCommand::GenerateKey => cli_handlers::handle_config_generate_key(&mut config),
             ConfigCommand::RemoveKey { key } => {
-                config.remove_api_key(&key);
-                config.save()?;
-                println!("API key removed successfully");
+                cli_handlers::handle_config_remove_key(&mut config, key)
             }
             ConfigCommand::SetPort { port } => {
-                config.port = port;
-                config.save()?;
-                println!("Port set successfully");
+                cli_handlers::handle_config_set_port(&mut config, port)
             }
             ConfigCommand::SetAddress { address } => {
-                config.listen_address = address;
-                config.save()?;
-                println!("Listen address set successfully");
+                cli_handlers::handle_config_set_address(&mut config, address)
+            }
+            ConfigCommand::List => {
+                cli_handlers::handle_config_list(&config);
+                Ok(())
             }
         },
     }
-
-    Ok(())
 }
