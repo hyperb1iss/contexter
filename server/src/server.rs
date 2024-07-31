@@ -1,4 +1,5 @@
 use crate::config::Config;
+use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -36,7 +37,7 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-fn config_routes(cfg: &mut web::ServiceConfig) {
+pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/v1")
             .route(
@@ -63,7 +64,10 @@ pub async fn run_server(config: Config) -> std::io::Result<()> {
     let port = app_state.config.read().await.port;
 
     HttpServer::new(move || {
+        let cors = Cors::permissive();
+
         App::new()
+            .wrap(cors)
             .app_data(app_state.clone())
             .configure(config_routes)
     })
