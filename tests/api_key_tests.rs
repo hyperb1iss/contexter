@@ -1,30 +1,17 @@
 use actix_web::test;
-use base64::{engine::general_purpose, Engine as _};
 use contexter::config::Config;
-use contexter::utils::validate_api_key;
-use rand::rngs::OsRng;
-use rand::RngCore;
-use sha2::{Digest, Sha256};
-
-fn generate_api_key() -> String {
-    let mut key = [0u8; 32];
-    OsRng.fill_bytes(&mut key);
-    general_purpose::URL_SAFE_NO_PAD.encode(key)
-}
-
-fn hash_api_key(key: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(key.as_bytes());
-    hex::encode(hasher.finalize())
-}
+use contexter::utils::{generate_api_key, hash_api_key, validate_api_key};
 
 #[tokio::test]
 async fn test_api_key_generation() {
+    let mut config = Config::default();
+    let name = "test_key_name";
     let key = generate_api_key();
-    assert_eq!(key.len(), 43); // Base64 encoding of 32 bytes
-    assert!(key
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'));
+    let hashed_key = hash_api_key(&key);
+    config.add_api_key(name.to_string(), hashed_key);
+
+    assert_eq!(config.api_keys.len(), 1);
+    assert!(config.api_keys.contains_key(name));
 }
 
 #[tokio::test]
@@ -38,9 +25,10 @@ async fn test_api_key_hashing() {
 #[tokio::test]
 async fn test_api_key_validation() {
     let mut config = Config::default();
+    let name = "test_key_name";
     let key = generate_api_key();
     let hashed_key = hash_api_key(&key);
-    config.add_api_key(hashed_key);
+    config.add_api_key(name.to_string(), hashed_key);
 
     let req = test::TestRequest::default()
         .insert_header(("X-API-Key", key.as_str()))
@@ -57,28 +45,31 @@ async fn test_api_key_validation() {
 #[tokio::test]
 async fn test_multiple_api_keys() {
     let mut config = Config::default();
+    let name1 = "test_key_name1";
+    let name2 = "test_key_name2";
     let key1 = generate_api_key();
     let key2 = generate_api_key();
     let hashed_key1 = hash_api_key(&key1);
     let hashed_key2 = hash_api_key(&key2);
 
-    config.add_api_key(hashed_key1.clone());
-    config.add_api_key(hashed_key2.clone());
+    config.add_api_key(name1.to_string(), hashed_key1);
+    config.add_api_key(name2.to_string(), hashed_key2);
 
     assert_eq!(config.api_keys.len(), 2);
-    assert!(config.api_keys.contains(&hashed_key1));
-    assert!(config.api_keys.contains(&hashed_key2));
+    assert!(config.api_keys.contains_key(name1));
+    assert!(config.api_keys.contains_key(name2));
 }
 
 #[tokio::test]
 async fn test_remove_api_key() {
     let mut config = Config::default();
+    let name = "test_key_name";
     let key = generate_api_key();
     let hashed_key = hash_api_key(&key);
 
-    config.add_api_key(hashed_key.clone());
+    config.add_api_key(name.to_string(), hashed_key);
     assert_eq!(config.api_keys.len(), 1);
 
-    config.remove_api_key(&hashed_key);
+    config.remove_api_key(name);
     assert_eq!(config.api_keys.len(), 0);
 }

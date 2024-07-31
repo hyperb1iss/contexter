@@ -43,26 +43,35 @@ pub fn handle_config_remove_project(
     Ok(())
 }
 
-pub fn handle_config_generate_key(config: &mut Config) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle_config_generate_key(
+    config: &mut Config,
+    name: String,
+) -> Result<(), Box<dyn std::error::Error>> {
     let new_key = generate_api_key();
     let hashed_key = hash_api_key(&new_key);
-    config.add_api_key(hashed_key);
+    config.add_api_key(name.clone(), hashed_key);
     config.save()?;
-    println!("New API key generated: {}", new_key);
+    println!("New API key generated for '{}': {}", name, new_key);
     println!("Please store this key securely. It won't be displayed again.");
-    info!("New API key generated successfully");
+    info!("New API key generated successfully for '{}'", name);
     Ok(())
 }
 
 pub fn handle_config_remove_key(
     config: &mut Config,
-    key: String,
+    name: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let hashed_key = hash_api_key(&key);
-    config.remove_api_key(&hashed_key);
+    config.remove_api_key(&name);
     config.save()?;
-    info!("API key removed successfully");
+    info!("API key '{}' removed successfully", name);
     Ok(())
+}
+
+pub fn handle_config_list_keys(config: &Config) {
+    println!("API Keys:");
+    for (name, _) in &config.api_keys {
+        println!("  {}: {}", name, "*".repeat(40)); // Hide the hashed key in the output
+    }
 }
 
 pub fn handle_config_set_port(
@@ -93,8 +102,8 @@ pub fn handle_config_list(config: &Config) {
     for (name, path) in &config.projects {
         println!("  {}: {:?}", name, path);
     }
-    println!("API Keys (hashed):");
-    for key in &config.api_keys {
-        println!("  {}", key);
+    println!("API Keys:");
+    for (name, _) in &config.api_keys {
+        println!("  {}: {}", name, "*".repeat(40)); // Hide the hashed key in the output
     }
 }

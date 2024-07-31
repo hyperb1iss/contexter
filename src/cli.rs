@@ -52,13 +52,19 @@ pub enum ConfigCommand {
     },
 
     #[structopt(name = "generate-key", about = "Generate a new API key")]
-    GenerateKey,
+    GenerateKey {
+        #[structopt(help = "API key name")]
+        name: String,
+    },
 
     #[structopt(name = "remove-key", about = "Remove an API key")]
     RemoveKey {
-        #[structopt(help = "API key")]
-        key: String,
+        #[structopt(help = "API key name")]
+        name: String,
     },
+
+    #[structopt(name = "list-keys", about = "List API keys")]
+    ListKeys,
 
     #[structopt(name = "set-port", about = "Set the server port")]
     SetPort {
@@ -85,6 +91,10 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
             quiet: _,
             verbose: _,
         } => {
+            if config.api_keys.is_empty() {
+                eprintln!("No API keys defined. Please generate an API key using `contexter config generate-key <name>`.");
+                return Ok(());
+            }
             // Server logic will be handled in main.rs
             Ok(())
         }
@@ -100,9 +110,15 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
             ConfigCommand::RemoveProject { name } => {
                 cli_handlers::handle_config_remove_project(&mut config, name)
             }
-            ConfigCommand::GenerateKey => cli_handlers::handle_config_generate_key(&mut config),
-            ConfigCommand::RemoveKey { key } => {
-                cli_handlers::handle_config_remove_key(&mut config, key)
+            ConfigCommand::GenerateKey { name } => {
+                cli_handlers::handle_config_generate_key(&mut config, name)
+            }
+            ConfigCommand::RemoveKey { name } => {
+                cli_handlers::handle_config_remove_key(&mut config, name)
+            }
+            ConfigCommand::ListKeys => {
+                cli_handlers::handle_config_list_keys(&config);
+                Ok(())
             }
             ConfigCommand::SetPort { port } => {
                 cli_handlers::handle_config_set_port(&mut config, port)

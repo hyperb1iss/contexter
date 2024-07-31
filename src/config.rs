@@ -8,7 +8,8 @@ pub struct Config {
     pub projects: HashMap<String, PathBuf>,
     pub port: u16,
     pub listen_address: String,
-    pub api_keys: Vec<String>,
+    #[serde(default)]
+    pub api_keys: HashMap<String, String>, // Map from name to hashed API key
 }
 
 impl Default for Config {
@@ -17,7 +18,7 @@ impl Default for Config {
             projects: HashMap::new(),
             port: 3030,
             listen_address: "127.0.0.1".to_string(),
-            api_keys: Vec::new(),
+            api_keys: HashMap::new(),
         }
     }
 }
@@ -27,7 +28,11 @@ impl Config {
         let config_path = Config::get_config_path()?;
         if config_path.exists() {
             let config_str = fs::read_to_string(config_path)?;
-            Ok(serde_json::from_str(&config_str)?)
+            let mut config: Config = serde_json::from_str(&config_str)?;
+            if config.api_keys.is_empty() {
+                config.api_keys = HashMap::new();
+            }
+            Ok(config)
         } else {
             Ok(Config::default())
         }
@@ -48,14 +53,12 @@ impl Config {
         self.projects.remove(name)
     }
 
-    pub fn add_api_key(&mut self, hashed_key: String) {
-        if !self.api_keys.contains(&hashed_key) {
-            self.api_keys.push(hashed_key);
-        }
+    pub fn add_api_key(&mut self, name: String, hashed_key: String) {
+        self.api_keys.insert(name, hashed_key);
     }
 
-    pub fn remove_api_key(&mut self, hashed_key: &str) {
-        self.api_keys.retain(|k| k != hashed_key);
+    pub fn remove_api_key(&mut self, name: &str) {
+        self.api_keys.remove(name);
     }
 
     fn get_config_path() -> Result<PathBuf, Box<dyn std::error::Error>> {

@@ -24,7 +24,9 @@ async fn setup_test_app() -> (Config, web::Data<AppState>) {
     );
 
     // Add a valid API key to the configuration
-    config.api_keys.push(hash_api_key(TEST_API_KEY));
+    config
+        .api_keys
+        .insert("test_key_name".to_string(), hash_api_key(TEST_API_KEY));
 
     let app_state = web::Data::new(AppState {
         config: Arc::new(RwLock::new(config.clone())),
