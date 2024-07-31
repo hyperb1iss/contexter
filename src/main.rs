@@ -1,54 +1,41 @@
-use clap::Parser;
-use clipboard_anywhere::set_clipboard;
+mod server;
 use contexter::{gather_relevant_files, concatenate_files};
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Directory to search for files
-    directory: String,
 
-    /// File extensions to include
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+struct Cli {
+    #[structopt(short = "s", long = "server")]
+    server: bool,
+
+    #[structopt(short = "k", long = "key", default_value = "")]
+    key: String,
+
+    #[structopt(short = "d", long = "directory")]
+    directory: Option<String>,
+
+    #[structopt(short = "e", long = "extensions", use_delimiter = true)]
     extensions: Vec<String>,
 
-    /// Exclude filename patterns
-    #[arg(short, long)]
-    exclude: Vec<String>,
-
-    /// Copy result to clipboard
-    #[arg(short, long)]
-    clipboard: bool,
+    #[structopt(short = "x", long = "exclude_patterns", use_delimiter = true)]
+    exclude_patterns: Vec<String>,
 }
 
-fn main() -> std::io::Result<()> {
-    // Parse command line arguments
-    let args = Args::parse();
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    let args = Cli::from_args();
 
-    let extensions: Vec<&str> = args.extensions.iter().map(AsRef::as_ref).collect();
-    let excludes: Vec<&str> = args.exclude.iter().map(AsRef::as_ref).collect();
-
-    // Gather relevant files and concatenate their content
-    match gather_relevant_files(&args.directory, extensions, excludes) {
-        Ok(files) => {
-            match concatenate_files(files) {
-                Ok((result, filenames)) => {
-                    if args.clipboard {
-                        for filename in filenames {
-                            println!("{}", filename);
-                        }
-                        match set_clipboard(&result) {
-                            Ok(_) => println!("The concatenated content has been copied to the clipboard."),
-                            Err(e) => eprintln!("Failed to copy to clipboard: {}", e),
-                        }
-                    } else {
-                        println!("{}", result);
-                    }
-                }
-                Err(e) => eprintln!("Error concatenating files: {}", e),
-            }
+    if args.server {
+        server::run_server(args.key).await
+    } else {
+        if let Some(directory) = args.directory {
+            let extensions: Vec<&str> = args.extensions.iter().map(String::as_str).collect();
+            let exclude_patterns: Vec<&str> = args.exclude_patterns.iter().map(String::as_str).collect();
+            let relevant_files = gather_relevant_files(&directory, extensions, exclude_patterns)?;
+            let concatenated_files = concatenate_files(relevant_files, true).unwrap();
+            println!("{:?}", concatenated_files);
         }
-        Err(e) => eprintln!("Error gathering relevant files: {}", e),
+        Ok(())
     }
-
-    Ok(())
 }
