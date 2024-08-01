@@ -40,6 +40,8 @@ pub fn gather_relevant_files(
         String::from(r"\.vscode"),
         String::from(r"\.idea"),
         String::from(r"\.vs"),
+        String::from(r"package-lock\.json"),
+        String::from(r"\.lock"),
     ]);
 
     // Create a file system walker that respects .gitignore
