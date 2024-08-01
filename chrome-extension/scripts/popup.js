@@ -1,13 +1,26 @@
-console.log("Popup script started");
-console.log("jQuery version:", $.fn.jquery);
-console.log("jsTree version:", $.fn.jstree.version);
+function showStartupBanner(version) {
+  console.log(
+    `%c 🚀✨🌟 Contexter v${version} launched! 🌠🛸🌈 `,
+    'background: linear-gradient(90deg, #000033 0%, #0033cc 50%, #6600cc 100%); color: #00ffff; font-weight: bold; padding: 5px 10px; border-radius: 5px; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #00ffff, 0 0 35px #00ffff, 0 0 40px #00ffff, 0 0 50px #00ffff, 0 0 75px #00ffff;',
+  );
+}
 
-document.addEventListener("DOMContentLoaded", () => {
-  document.body.style.width = "800px";
+function fetchVersionAndShowBanner() {
+  const manifest = chrome.runtime.getManifest();
+  const version = manifest.version;
+  showStartupBanner(version);
+}
+
+console.debug("Popup script started");
+console.debug("jQuery version:", $.fn.jquery);
+console.debug("jsTree version:", $.fn.jstree.version);
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.body.style.width = '800px';
 });
 
 $(document).ready(async function () {
-  console.log("Document ready, initializing...");
+  console.debug("Document ready, initializing...");
 
   const projectList = $("#projects");
   const projectMetadata = $("#project-metadata");
@@ -20,9 +33,7 @@ $(document).ready(async function () {
   const statusMessage = $("#status-message");
   const collapsibleToggle = $(".collapsible-toggle");
   const collapsibleContent = $(".collapsible-content");
-  const loadingIndicator = $("<div>")
-    .attr("id", "loading-indicator")
-    .text("Loading...");
+  const loadingIndicator = $("<div>").attr("id", "loading-indicator").text("Loading...");
 
   let selectedFiles = new Set();
   let allFiles = [];
@@ -49,8 +60,8 @@ $(document).ready(async function () {
         "apiKey",
         "serverUrl",
       ]);
-      console.log("API Key:", apiKey ? "Set" : "Not set");
-      console.log("Server URL:", serverUrl);
+      console.debug("API Key:", apiKey ? "Set" : "Not set");
+      console.debug("Server URL:", serverUrl);
 
       if (!apiKey || !serverUrl) {
         throw new Error("API Key or Server URL is missing");
@@ -64,7 +75,7 @@ $(document).ready(async function () {
           `Failed to fetch projects: ${response.status} ${response.statusText}`
         );
       const data = await response.json();
-      console.log("Fetched projects:", data.projects);
+      console.debug("Fetched projects:", data.projects);
       return data.projects;
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -78,7 +89,7 @@ $(document).ready(async function () {
   async function fetchProjectMetadata(projectName) {
     showLoading();
     try {
-      console.log("Fetching metadata for project:", projectName);
+      console.debug("Fetching metadata for project:", projectName);
       const { apiKey, serverUrl } = await chrome.storage.sync.get([
         "apiKey",
         "serverUrl",
@@ -94,7 +105,7 @@ $(document).ready(async function () {
           `Failed to fetch project metadata: ${response.status} ${response.statusText}`
         );
       const metadata = await response.json();
-      console.log("Fetched metadata:", metadata);
+      console.debug("Fetched metadata:", metadata);
       return metadata;
     } catch (error) {
       console.error("Error fetching project metadata:", error);
@@ -108,7 +119,7 @@ $(document).ready(async function () {
   async function fetchProjectContent(projectName, selectedFiles, allFiles) {
     showLoading();
     try {
-      console.log("Fetching content for project:", projectName);
+      console.debug("Fetching content for project:", projectName);
       const { apiKey, serverUrl } = await chrome.storage.sync.get([
         "apiKey",
         "serverUrl",
@@ -116,14 +127,14 @@ $(document).ready(async function () {
 
       let paths;
       if (selectedFiles.size === allFiles.length) {
-        console.log("All files selected, sending empty list");
+        console.debug("All files selected, sending empty list");
         paths = [];
       } else {
-        console.log("Sending list of selected files");
+        console.debug("Sending list of selected files");
         paths = Array.from(selectedFiles);
       }
 
-      console.log("Paths to fetch:", paths);
+      console.debug("Paths to fetch:", paths);
 
       const response = await fetch(
         `${serverUrl}/api/v1/projects/${projectName}`,
@@ -141,7 +152,7 @@ $(document).ready(async function () {
           `Failed to fetch project content: ${response.status} ${response.statusText}`
         );
       const data = await response.json();
-      console.log("Fetched content:", data.content ? "Received" : "Empty");
+      console.debug("Fetched content:", data.content ? "Received" : "Empty");
       return data.content;
     } catch (error) {
       console.error("Error fetching project content:", error);
@@ -153,7 +164,7 @@ $(document).ready(async function () {
   }
 
   function createJsTreeData(files) {
-    console.log("Creating jsTree data structure");
+    console.debug("Creating jsTree data structure");
     const tree = [];
     const paths = {};
 
@@ -186,19 +197,19 @@ $(document).ready(async function () {
       });
     });
 
-    console.log("jsTree data structure created:", tree);
+    console.debug("jsTree data structure created:", tree);
     return tree;
   }
 
   function selectAllNodes(treeElement) {
-    console.log("Selecting all nodes");
+    console.debug("Selecting all nodes");
     treeElement.jstree("check_all");
     selectedFiles = new Set(allFiles);
-    console.log("All nodes selected, selectedFiles:", selectedFiles);
+    console.debug("All nodes selected, selectedFiles:", selectedFiles);
   }
 
   collapsibleToggle.on("click", function () {
-    console.log("Toggling file tree visibility");
+    console.debug("Toggling file tree visibility");
     collapsibleContent.toggleClass("open");
     collapsibleToggle.text(
       collapsibleContent.hasClass("open") ? "Files ▲" : "Files ▼"
@@ -206,20 +217,20 @@ $(document).ready(async function () {
   });
 
   try {
-    console.log("Fetching projects...");
+    console.debug("Fetching projects...");
     const projects = await fetchProjects();
-    console.log("Projects received:", projects);
+    console.debug("Projects received:", projects);
 
     if (projects.length === 0) {
-      console.log("No projects available");
+      console.debug("No projects available");
       projectList.append("<li>No projects available</li>");
     } else {
       projects.forEach((project) => {
-        console.log("Adding project to list:", project.name);
+        console.debug("Adding project to list:", project.name);
         const li = $("<li>")
           .text(project.name)
           .on("click", async function () {
-            console.log("Project clicked:", project.name);
+            console.debug("Project clicked:", project.name);
             const metadata = await fetchProjectMetadata(project.name);
             if (metadata) {
               currentProject = metadata.name;
@@ -228,7 +239,7 @@ $(document).ready(async function () {
               allFiles = metadata.files;
               selectedFiles = new Set(allFiles);
 
-              console.log("Initializing jsTree");
+              console.debug("Initializing jsTree");
               fileTree.jstree("destroy");
               fileTree
                 .jstree({
@@ -256,6 +267,7 @@ $(document).ready(async function () {
               projectMetadata.show();
               collapsibleContent.removeClass("open");
               collapsibleToggle.text("Files ▼");
+              fetchVersionAndShowBanner(); // Show the banner when elements are loaded
             }
           });
         projectList.append(li);
@@ -292,12 +304,12 @@ $(document).ready(async function () {
     }
 
     updateSelectedFiles(node.id, isChecked);
-    console.log("Selected files:", selectedFiles);
+    console.debug("Selected files:", selectedFiles);
   });
 
   fetchContentBtn.on("click", async function () {
     if (currentProject) {
-      console.log("Fetching content for project:", currentProject);
+      console.debug("Fetching content for project:", currentProject);
       const content = await fetchProjectContent(
         currentProject,
         selectedFiles,
@@ -308,19 +320,15 @@ $(document).ready(async function () {
         showStatus("Content fetched successfully");
       }
     } else {
-      console.log("No project selected");
+      console.debug("No project selected");
       showStatus("Please select a project first", true);
     }
   });
 
   copyContentBtn.on("click", async function () {
-    console.log("Fetching content before copying to clipboard");
+    console.debug("Fetching content before copying to clipboard");
     if (currentProject) {
-      const content = await fetchProjectContent(
-        currentProject,
-        selectedFiles,
-        allFiles
-      );
+      const content = await fetchProjectContent(currentProject, selectedFiles, allFiles);
       if (content) {
         contentDisplay.val(content).show();
         contentDisplay.select();
@@ -328,10 +336,10 @@ $(document).ready(async function () {
         showStatus("Content fetched and copied to clipboard");
       }
     } else {
-      console.log("No project selected");
+      console.debug("No project selected");
       showStatus("Please select a project first", true);
     }
   });
 
-  console.log("Popup script initialization complete");
+  console.debug("Popup script initialization complete");
 });
