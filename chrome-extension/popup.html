@@ -6,36 +6,33 @@
     <title>Contexter</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
     <link rel="stylesheet" href="styles/styles.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Audiowide&family=Proxima+Nova:wght@400;700&display=swap">
   </head>
   <body>
-    <h1>Contexter</h1>
-    <div id="project-list">
-      <h2>Projects</h2>
-      <ul id="projects"></ul>
-    </div>
-    <div id="project-metadata" style="display: none">
-      <h2>Project Metadata</h2>
-      <h3 id="project-name"></h3>
-      <p id="project-path"></p>
-      <div id="content-actions">
-        <button id="fetch-content">Fetch Content</button>
-        <button id="copy-content">Copy to Clipboard</button>
+    <div class="popup-container">
+      <h1>Contexter</h1>
+      <div id="project-list">
+        <h2>Projects</h2>
+        <ul id="projects"></ul>
       </div>
-      <div class="collapsible">
-        <button type="button" class="collapsible-toggle">Files ▼</button>
-        <div class="collapsible-content">
-          <div id="file-tree"></div>
+      <div id="project-metadata" style="display: none">
+        <h2>Project Metadata</h2>
+        <h3 id="project-name"></h3>
+        <p id="project-path"></p>
+        <div id="content-actions">
+          <button id="fetch-content">Fetch Content</button>
+          <button id="copy-content">Copy to Clipboard</button>
+        </div>
+        <div class="collapsible">
+          <button type="button" class="collapsible-toggle">Files ▼</button>
+          <div class="collapsible-content">
+            <div id="file-tree"></div>
+          </div>
         </div>
       </div>
+      <textarea id="content-display" style="display: none" rows="10" cols="50" readonly></textarea>
+      <div id="status-message"></div>
     </div>
-    <textarea
-      id="content-display"
-      style="display: none"
-      rows="10"
-      cols="50"
-      readonly
-    ></textarea>
-    <div id="status-message"></div>
     <script src="scripts/jquery.min.js"></script>
     <script src="scripts/jstree.min.js"></script>
     <script src="scripts/popup.js"></script>

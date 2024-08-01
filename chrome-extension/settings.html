@@ -1,25 +1,34 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" type="text/css" href="styles/settings.css" />
+    <link rel="stylesheet" type="text/css" href="styles/styles.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Audiowide&family=Proxima+Nova:wght@400;700&display=swap">
   </head>
   <body>
-    <h1>Contexter Settings</h1>
-    <div>
-      <label for="api-key">API Key:</label>
-      <input type="text" id="api-key" name="api-key" />
-      <button id="validate-api-key">Validate API Key</button>
+    <div class="settings-container">
+      <h1>Contexter Settings</h1>
+      <p class="tagline">Unleash the Power of Context</p>
+      <div class="settings-section">
+        <label for="api-key">API Key:</label>
+        <input type="text" id="api-key" name="api-key" />
+        <button id="validate-api-key">Validate API Key</button>
+      </div>
+      <div class="settings-section">
+        <label for="server-url">Server URL:</label>
+        <input type="text" id="server-url" name="server-url" value="http://localhost:3030" />
+      </div>
+      <button id="save-settings">Save Settings</button>
+      
+      <div class="info-section">
+        <h2>About</h2>
+        <p>Version: 1.0.0</p>
+        <p>Author: Stefanie Jane (<a href="https://linktr.ee/hyperb1iss">@hyperb1iss</a>)</p>
+        <p>Links:</p>
+        <ul>
+          <li><a href="https://github.com/hyperb1iss/contexter" target="_blank">GitHub Repository</a></li>
+        </ul>
+      </div>
     </div>
-    <div>
-      <label for="server-url">Server URL:</label>
-      <input
-        type="text"
-        id="server-url"
-        name="server-url"
-        value="http://localhost:3030"
-      />
-    </div>
-    <button id="save-settings">Save Settings</button>
     <script src="scripts/settings.js"></script>
   </body>
 </html>

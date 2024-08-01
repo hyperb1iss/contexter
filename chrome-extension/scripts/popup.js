@@ -2,6 +2,10 @@ console.log("Popup script started");
 console.log("jQuery version:", $.fn.jquery);
 console.log("jsTree version:", $.fn.jstree.version);
 
+document.addEventListener('DOMContentLoaded', () => {
+  document.body.style.width = '800px';
+});
+
 $(document).ready(async function () {
   console.log("Document ready, initializing...");
 
