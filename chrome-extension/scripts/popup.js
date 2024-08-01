@@ -2,8 +2,8 @@ console.log("Popup script started");
 console.log("jQuery version:", $.fn.jquery);
 console.log("jsTree version:", $.fn.jstree.version);
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.body.style.width = '800px';
+document.addEventListener("DOMContentLoaded", () => {
+  document.body.style.width = "800px";
 });
 
 $(document).ready(async function () {
@@ -20,6 +20,9 @@ $(document).ready(async function () {
   const statusMessage = $("#status-message");
   const collapsibleToggle = $(".collapsible-toggle");
   const collapsibleContent = $(".collapsible-content");
+  const loadingIndicator = $("<div>")
+    .attr("id", "loading-indicator")
+    .text("Loading...");
 
   let selectedFiles = new Set();
   let allFiles = [];
@@ -31,7 +34,16 @@ $(document).ready(async function () {
     setTimeout(() => statusMessage.text(""), 3000);
   }
 
+  function showLoading() {
+    $("body").append(loadingIndicator);
+  }
+
+  function hideLoading() {
+    loadingIndicator.remove();
+  }
+
   async function fetchProjects() {
+    showLoading();
     try {
       const { apiKey, serverUrl } = await chrome.storage.sync.get([
         "apiKey",
@@ -58,10 +70,13 @@ $(document).ready(async function () {
       console.error("Error fetching projects:", error);
       showStatus("Error fetching projects: " + error.message, true);
       return [];
+    } finally {
+      hideLoading();
     }
   }
 
   async function fetchProjectMetadata(projectName) {
+    showLoading();
     try {
       console.log("Fetching metadata for project:", projectName);
       const { apiKey, serverUrl } = await chrome.storage.sync.get([
@@ -85,10 +100,13 @@ $(document).ready(async function () {
       console.error("Error fetching project metadata:", error);
       showStatus("Error fetching project metadata: " + error.message, true);
       return null;
+    } finally {
+      hideLoading();
     }
   }
 
   async function fetchProjectContent(projectName, selectedFiles, allFiles) {
+    showLoading();
     try {
       console.log("Fetching content for project:", projectName);
       const { apiKey, serverUrl } = await chrome.storage.sync.get([
@@ -129,6 +147,8 @@ $(document).ready(async function () {
       console.error("Error fetching project content:", error);
       showStatus("Error fetching project content: " + error.message, true);
       return null;
+    } finally {
+      hideLoading();
     }
   }
 
@@ -296,7 +316,11 @@ $(document).ready(async function () {
   copyContentBtn.on("click", async function () {
     console.log("Fetching content before copying to clipboard");
     if (currentProject) {
-      const content = await fetchProjectContent(currentProject, selectedFiles, allFiles);
+      const content = await fetchProjectContent(
+        currentProject,
+        selectedFiles,
+        allFiles
+      );
       if (content) {
         contentDisplay.val(content).show();
         contentDisplay.select();
