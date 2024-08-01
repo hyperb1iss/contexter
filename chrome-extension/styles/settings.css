@@ -1,0 +1,108 @@
+/* Settings-specific styles */
+.settings-section {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="password"],
+select {
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+}
+
+.option label {
+  margin-left: 10px;
+}
+
+/* Custom checkbox styles */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #3498db;
+  border-radius: 4px;
+  outline: none;
+  transition: all 0.3s;
+  position: relative;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked {
+  background-color: #3498db;
+}
+
+input[type="checkbox"]:checked::before {
+  content: "\2713";
+  font-size: 16px;
+  color: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Info section styles */
+.info-section {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.info-section h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.info-section p {
+  margin-bottom: 5px;
+}
+
+.info-section a {
+  color: #3498db;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.info-section a:hover {
+  color: #2980b9;
+}
+
+/* Dark mode styles */
+body.dark-mode input[type="text"],
+body.dark-mode input[type="password"],
+body.dark-mode select {
+  background: #555;
+  color: #f5f5f5;
+  border: 1px solid #666;
+}
+
+body.dark-mode .info-section {
+  border-top-color: #555;
+}
+
+body.dark-mode .info-section a {
+  color: #5dade2;
+}
+
+body.dark-mode .info-section a:hover {
+  color: #3498db;
+}

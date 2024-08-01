@@ -1,22 +1,25 @@
-function showStartupBanner(version) {
-  console.log(
-    `%c 🚀✨🌟 Contexter v${version} launched! 🌠🛸🌈 `,
-    'background: linear-gradient(90deg, #000033 0%, #0033cc 50%, #6600cc 100%); color: #00ffff; font-weight: bold; padding: 5px 10px; border-radius: 5px; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #00ffff, 0 0 35px #00ffff, 0 0 40px #00ffff, 0 0 50px #00ffff, 0 0 75px #00ffff;',
-  );
-}
-
 function fetchVersionAndShowBanner() {
   const manifest = chrome.runtime.getManifest();
   const version = manifest.version;
   showStartupBanner(version);
 }
 
+function showStartupBanner(version) {
+  console.log(
+    `%c 🚀✨🌟 Contexter v${version} launched! 🌠🛸🌈 `,
+    "background: linear-gradient(90deg, #000033 0%, #0033cc 50%, #6600cc 100%); color: #00ffff; font-weight: bold; padding: 5px 10px; border-radius: 5px; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #00ffff, 0 0 35px #00ffff, 0 0 40px #00ffff, 0 0 50px #00ffff, 0 0 75px #00ffff;"
+  );
+}
+
 console.debug("Popup script started");
 console.debug("jQuery version:", $.fn.jquery);
 console.debug("jsTree version:", $.fn.jstree.version);
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.body.style.width = '800px';
+document.addEventListener("DOMContentLoaded", () => {
+  document.body.style.width = "800px";
+  chrome.storage.sync.get("darkMode", (result) => {
+    setDarkMode(result.darkMode);
+  });
 });
 
 $(document).ready(async function () {
@@ -33,7 +36,9 @@ $(document).ready(async function () {
   const statusMessage = $("#status-message");
   const collapsibleToggle = $(".collapsible-toggle");
   const collapsibleContent = $(".collapsible-content");
-  const loadingIndicator = $("<div>").attr("id", "loading-indicator").text("Loading...");
+  const loadingIndicator = $("<div>")
+    .attr("id", "loading-indicator")
+    .text("Loading...");
 
   let selectedFiles = new Set();
   let allFiles = [];
@@ -181,8 +186,9 @@ $(document).ready(async function () {
             children: isLast ? false : [],
             icon: isLast ? "jstree-file" : "jstree-folder",
             state: {
-              selected: true,
-              opened: false, // Ensure all nodes start closed
+              selected: false,
+              checked: true,
+              opened: false,
             },
           };
           if (index === 0) {
@@ -206,6 +212,38 @@ $(document).ready(async function () {
     treeElement.jstree("check_all");
     selectedFiles = new Set(allFiles);
     console.debug("All nodes selected, selectedFiles:", selectedFiles);
+  }
+
+  function initializeJsTree(files) {
+    console.debug("Initializing jsTree");
+    fileTree.jstree("destroy");
+    fileTree
+      .jstree({
+        core: {
+          data: createJsTreeData(files),
+          themes: {
+            name: isDarkMode() ? "default-dark" : "default",
+            dots: false,
+            icons: true,
+          },
+          expand_selected_onload: false,
+        },
+        plugins: ["checkbox"],
+        checkbox: {
+          keep_selected_style: false,
+          three_state: true,
+          whole_node: false,
+          tie_selection: false,
+        },
+      })
+      .on("ready.jstree", function (e, data) {
+        selectAllNodes($(this));
+        $(this).jstree("close_all");
+      });
+  }
+
+  function isDarkMode() {
+    return document.body.classList.contains("dark-mode");
   }
 
   collapsibleToggle.on("click", function () {
@@ -239,35 +277,12 @@ $(document).ready(async function () {
               allFiles = metadata.files;
               selectedFiles = new Set(allFiles);
 
-              console.debug("Initializing jsTree");
-              fileTree.jstree("destroy");
-              fileTree
-                .jstree({
-                  core: {
-                    data: createJsTreeData(allFiles),
-                    themes: {
-                      name: "default",
-                      dots: false,
-                      icons: true,
-                    },
-                    expand_selected_onload: false, // Prevent auto-expanding selected nodes
-                  },
-                  plugins: ["checkbox", "wholerow"],
-                  checkbox: {
-                    three_state: true,
-                    whole_node: false,
-                    tie_selection: false,
-                  },
-                })
-                .on("ready.jstree", function (e, data) {
-                  selectAllNodes($(this));
-                  $(this).jstree("close_all"); // Ensure all nodes are closed after initialization
-                });
+              initializeJsTree(allFiles);
 
               projectMetadata.show();
               collapsibleContent.removeClass("open");
               collapsibleToggle.text("Files ▼");
-              fetchVersionAndShowBanner(); // Show the banner when elements are loaded
+              fetchVersionAndShowBanner();
             }
           });
         projectList.append(li);
@@ -289,11 +304,9 @@ $(document).ready(async function () {
         selectedFiles.delete(nodeId);
       }
 
-      // If it's a folder, update all child files
       const childNodes = fileTree.jstree(true).get_node(nodeId).children_d;
       childNodes.forEach((childId) => {
         if (allFiles.includes(childId)) {
-          // Only add if it's a file, not a folder
           if (isSelected) {
             selectedFiles.add(childId);
           } else {
@@ -328,7 +341,11 @@ $(document).ready(async function () {
   copyContentBtn.on("click", async function () {
     console.debug("Fetching content before copying to clipboard");
     if (currentProject) {
-      const content = await fetchProjectContent(currentProject, selectedFiles, allFiles);
+      const content = await fetchProjectContent(
+        currentProject,
+        selectedFiles,
+        allFiles
+      );
       if (content) {
         contentDisplay.val(content).show();
         contentDisplay.select();
@@ -338,6 +355,16 @@ $(document).ready(async function () {
     } else {
       console.debug("No project selected");
       showStatus("Please select a project first", true);
+    }
+  });
+
+  // Add an event listener for theme changes
+  document.addEventListener("themeChanged", function (e) {
+    if (fileTree.jstree(true)) {
+      fileTree.jstree(true).settings.core.themes.name = isDarkMode()
+        ? "default-dark"
+        : "default";
+      fileTree.jstree(true).redraw(true);
     }
   });
 

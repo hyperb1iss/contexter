@@ -42,6 +42,11 @@ pub fn gather_relevant_files(
         String::from(r"\.vs"),
         String::from(r"package-lock\.json"),
         String::from(r"\.lock"),
+        String::from(r"\.log"),
+        String::from(r"\.tmp"),
+        String::from(r"\.temp"),
+        String::from(r"\.swp"),
+        String::from(r"\.min.js"),
     ]);
 
     // Create a file system walker that respects .gitignore

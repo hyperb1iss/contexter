@@ -1,34 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <link rel="stylesheet" type="text/css" href="styles/styles.css" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Audiowide&family=Proxima+Nova:wght@400;700&display=swap">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contexter Settings</title>
+    <link rel="stylesheet" href="styles/common.css" />
+    <link rel="stylesheet" href="styles/settings.css" />
+    <script src="scripts/shared.js"></script>
+    <script src="scripts/settings.js"></script>
   </head>
   <body>
-    <div class="settings-container">
+    <div class="container">
       <h1>Contexter Settings</h1>
-      <p class="tagline">Unleash the Power of Context</p>
+
       <div class="settings-section">
+        <h2>API Configuration</h2>
         <label for="api-key">API Key:</label>
-        <input type="text" id="api-key" name="api-key" />
+        <input type="password" id="api-key" placeholder="Enter your API key" />
+
+        <label for="server-url">Server URL:</label>
+        <input type="text" id="server-url" placeholder="Enter server URL" />
+
         <button id="validate-api-key">Validate API Key</button>
       </div>
+
       <div class="settings-section">
-        <label for="server-url">Server URL:</label>
-        <input type="text" id="server-url" name="server-url" value="http://localhost:3030" />
+        <h2>Appearance</h2>
+        <div class="option">
+          <select id="theme-select">
+            <option value="system">Follow System Theme</option>
+            <option value="light">Light Mode</option>
+            <option value="dark">Dark Mode</option>
+          </select>
+        </div>
       </div>
+
       <button id="save-settings">Save Settings</button>
-      
+
+      <div id="status-message"></div>
+
       <div class="info-section">
-        <h2>About</h2>
-        <p>Version: 1.0.0</p>
-        <p>Author: Stefanie Jane (<a href="https://linktr.ee/hyperb1iss">@hyperb1iss</a>)</p>
-        <p>Links:</p>
-        <ul>
-          <li><a href="https://github.com/hyperb1iss/contexter" target="_blank">GitHub Repository</a></li>
-        </ul>
+        <h2>About Contexter</h2>
+        <p>Version: <span id="extension-version">Loading...</span></p>
+        <p>Developer: Stefanie Jane</p>
+        <p>
+          <a href="https://github.com/hyperb1iss/contexter" target="_blank"
+            >GitHub Repository</a
+          >
+        </p>
+        <p>
+          If you find this project useful,
+          <a href="https://ko-fi.com/hyperb1iss" target="_blank"
+            >buy me a Monster Ultra Violet</a
+          >! ⚡️
+        </p>
       </div>
     </div>
-    <script src="scripts/settings.js"></script>
   </body>
 </html>
