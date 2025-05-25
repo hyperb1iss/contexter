@@ -50,6 +50,7 @@ interface ExtensionState {
   setProjectMetadata: (metadata: Project | null) => void
   setSelectedFiles: (files: Set<string>) => void
   toggleFileSelection: (filePath: string) => void
+  toggleDirectorySelection: (directoryPath: string, allFiles: string[]) => void
   selectAllFiles: () => void
   deselectAllFiles: () => void
   setFileTree: (tree: FileTreeNode[]) => void
@@ -84,7 +85,13 @@ export const useExtensionStore = create<ExtensionState>()(
 
       setCurrentProject: (project) => set({ currentProject: project }),
 
-      setProjectMetadata: (metadata) => set({ projectMetadata: metadata }),
+      setProjectMetadata: (metadata) =>
+        set({
+          projectMetadata: metadata,
+          selectedFiles: new Set(), // Clear selections when switching projects
+          fileTree: [], // Clear file tree
+          projectContent: null, // Clear previous content
+        }),
 
       setSelectedFiles: (files) => set({ selectedFiles: files }),
 
@@ -96,6 +103,39 @@ export const useExtensionStore = create<ExtensionState>()(
         } else {
           newSelection.add(filePath)
         }
+        set({ selectedFiles: newSelection })
+      },
+
+      toggleDirectorySelection: (directoryPath, allFiles) => {
+        const { selectedFiles } = get()
+        const newSelection = new Set(selectedFiles)
+
+        // Find all files in this directory (including subdirectories)
+        const directoryFiles = allFiles.filter((file) => {
+          // Exact match for the directory itself if it's a file
+          if (file === directoryPath) return true
+          // Files that are in this directory or subdirectories
+          return file.startsWith(directoryPath + '/')
+        })
+
+        console.log('Directory selection for:', directoryPath)
+        console.log('Found directory files:', directoryFiles)
+
+        // Check if all directory files are already selected
+        const allDirectoryFilesSelected =
+          directoryFiles.length > 0 && directoryFiles.every((file) => selectedFiles.has(file))
+
+        console.log('All selected?', allDirectoryFilesSelected)
+
+        if (allDirectoryFilesSelected) {
+          // Deselect all files in directory
+          directoryFiles.forEach((file) => newSelection.delete(file))
+        } else {
+          // Select all files in directory
+          directoryFiles.forEach((file) => newSelection.add(file))
+        }
+
+        console.log('New selection size:', newSelection.size)
         set({ selectedFiles: newSelection })
       },
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useExtensionStore } from '../lib/store'
 import { api, ApiError } from '../lib/api'
 import Header from '../components/Header'
@@ -27,7 +27,7 @@ function App() {
     )
   }
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     if (!settings.apiKey || !settings.serverUrl) {
       setError('Please configure your API key and server URL in settings')
       return
@@ -53,12 +53,12 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [settings, setProjects, setLoading, setError])
 
   useEffect(() => {
     showBanner()
     loadProjects()
-  }, [settings.apiKey, settings.serverUrl])
+  }, [settings.apiKey, settings.serverUrl, loadProjects])
 
   if (!settings.apiKey || !settings.serverUrl) {
     return (

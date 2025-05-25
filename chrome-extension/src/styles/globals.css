@@ -177,4 +177,47 @@
     content: '';
     @apply bg-neon-500 absolute top-1 right-1 h-2 w-2 rounded-full;
   }
+
+  /* Custom checkbox styling */
+  input[type='checkbox'] {
+    @apply border-cyber-500 bg-cyber-800 h-3 w-3 appearance-none rounded border;
+    transition: all 0.2s ease-in-out;
+  }
+
+  input[type='checkbox']:checked {
+    @apply bg-neon-500 border-neon-500;
+  }
+
+  input[type='checkbox']:checked::after {
+    content: '✓';
+    @apply text-xs font-bold text-white;
+    display: block;
+    text-align: center;
+    line-height: 1;
+  }
+
+  input[type='checkbox']:hover {
+    @apply border-neon-400;
+  }
+
+  input[type='checkbox']:focus {
+    @apply ring-neon-500/50 ring-1 outline-none;
+  }
+
+  /* File tree specific styles */
+  .file-tree-scrollbar::-webkit-scrollbar {
+    @apply w-1;
+  }
+
+  .file-tree-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .file-tree-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-cyber-600/50 rounded-full;
+  }
+
+  .file-tree-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-cyber-500/70;
+  }
 }

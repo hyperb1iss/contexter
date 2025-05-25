@@ -1,4 +1,4 @@
-import { Component, ReactNode } from 'react'
+import { Component, ReactNode, ErrorInfo } from 'react'
 import { AlertTriangle } from 'lucide-react'
 
 interface ErrorBoundaryState {
@@ -20,7 +20,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Contexter Error:', error, errorInfo)
   }
 

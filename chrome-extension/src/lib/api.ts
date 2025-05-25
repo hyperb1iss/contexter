@@ -1,5 +1,6 @@
 import { Project } from './store'
 
+// Ensure RequestInit is recognized from lib.dom.d.ts
 interface ApiConfig {
   apiKey: string
   serverUrl: string
@@ -20,7 +21,11 @@ class ContexterApi {
   private async makeRequest<T>(
     endpoint: string,
     config: ApiConfig,
-    options: RequestInit = {}
+    options: {
+      method?: string
+      headers?: Record<string, string>
+      body?: string
+    } = {}
   ): Promise<T> {
     const { apiKey, serverUrl } = config
 

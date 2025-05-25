@@ -3,14 +3,8 @@
   "name": "Contexter",
   "version": "1.0.0",
   "description": "Generate high-quality context from codebases for LLM interactions",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "clipboardWrite"
-  ],
-  "host_permissions": [
-    "http://localhost:3030/*"
-  ],
+  "permissions": ["activeTab", "storage", "clipboardWrite"],
+  "host_permissions": ["http://localhost:3030/*"],
   "action": {
     "default_popup": "src/popup/index.html",
     "default_icon": {
