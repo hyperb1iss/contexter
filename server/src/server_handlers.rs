@@ -2,7 +2,7 @@ use crate::contexter::{concatenate_files, gather_relevant_files};
 use crate::repo_mapper::RepositoryMapper;
 use crate::server::{
     AppState, ErrorResponse, ProjectContentResponse, ProjectListResponse, ProjectMetadata,
-    ProjectSummary, RepositoryMapResponse, RepositoryAnalysisResponse,
+    ProjectSummary, RepositoryAnalysisResponse, RepositoryMapResponse,
 };
 use crate::utils::validate_api_key;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
@@ -51,7 +51,7 @@ pub async fn get_project_metadata(
     let project_name = project_name.into_inner();
 
     if let Some(project_path) = config.projects.get(&project_name) {
-        debug!("Gathering metadata for project: {}", project_name);
+        debug!("Gathering metadata for project: {project_name}");
         match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
             Ok(files) => {
                 let file_paths: Vec<String> = files
@@ -77,16 +77,16 @@ pub async fn get_project_metadata(
                 HttpResponse::Ok().json(metadata)
             }
             Err(e) => {
-                error!("Error gathering files for project {}: {}", project_name, e);
+                error!("Error gathering files for project {project_name}: {e}");
                 HttpResponse::InternalServerError().json(ErrorResponse {
                     error: "Failed to gather project metadata".to_string(),
                 })
             }
         }
     } else {
-        warn!("Project not found: {}", project_name);
+        warn!("Project not found: {project_name}");
         HttpResponse::NotFound().json(ErrorResponse {
-            error: format!("Project '{}' not found", project_name),
+            error: format!("Project '{project_name}' not found"),
         })
     }
 }
@@ -112,8 +112,7 @@ pub async fn run_contexter(
         {
             if let Some(paths) = paths {
                 debug!(
-                    "Running contexter on specific paths for project: {}",
-                    project_name
+                    "Running contexter on specific paths for project: {project_name}"
                 );
                 paths
                     .iter()
@@ -124,11 +123,11 @@ pub async fn run_contexter(
                     })
                     .collect()
             } else {
-                debug!("Running contexter on entire project: {}", project_name);
+                debug!("Running contexter on entire project: {project_name}");
                 match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
                     Ok(files) => files,
                     Err(e) => {
-                        error!("Error gathering files for project {}: {}", project_name, e);
+                        error!("Error gathering files for project {project_name}: {e}");
                         return HttpResponse::InternalServerError().json(ErrorResponse {
                             error: "Failed to gather files".to_string(),
                         });
@@ -136,11 +135,11 @@ pub async fn run_contexter(
                 }
             }
         } else {
-            debug!("Running contexter on entire project: {}", project_name);
+            debug!("Running contexter on entire project: {project_name}");
             match gather_relevant_files(project_path.to_str().unwrap(), vec![], vec![]) {
                 Ok(files) => files,
                 Err(e) => {
-                    error!("Error gathering files for project {}: {}", project_name, e);
+                    error!("Error gathering files for project {project_name}: {e}");
                     return HttpResponse::InternalServerError().json(ErrorResponse {
                         error: "Failed to gather files".to_string(),
                     });
@@ -160,8 +159,7 @@ pub async fn run_contexter(
             }
             Err(e) => {
                 error!(
-                    "Error concatenating files for project {}: {}",
-                    project_name, e
+                    "Error concatenating files for project {project_name}: {e}"
                 );
                 HttpResponse::InternalServerError().json(ErrorResponse {
                     error: "Failed to concatenate files".to_string(),
@@ -169,9 +167,9 @@ pub async fn run_contexter(
             }
         }
     } else {
-        warn!("Project not found: {}", project_name);
+        warn!("Project not found: {project_name}");
         HttpResponse::NotFound().json(ErrorResponse {
-            error: format!("Project '{}' not found", project_name),
+            error: format!("Project '{project_name}' not found"),
         })
     }
 }
@@ -193,12 +191,14 @@ pub async fn analyze_repository(
     let project_name = project_name.into_inner();
 
     if let Some(project_path) = config.projects.get(&project_name) {
-        debug!("Analyzing repository structure for project: {}", project_name);
-        
+        debug!(
+            "Analyzing repository structure for project: {project_name}"
+        );
+
         let mut mapper = RepositoryMapper::new();
         match mapper.analyze_repository(project_path) {
             Ok(()) => {
-                info!("Successfully analyzed repository: {}", project_name);
+                info!("Successfully analyzed repository: {project_name}");
                 let response = RepositoryAnalysisResponse {
                     project_name: project_name.clone(),
                     total_components: mapper.insights.total_components,
@@ -210,16 +210,16 @@ pub async fn analyze_repository(
                 HttpResponse::Ok().json(response)
             }
             Err(e) => {
-                error!("Error analyzing repository {}: {}", project_name, e);
+                error!("Error analyzing repository {project_name}: {e}");
                 HttpResponse::InternalServerError().json(ErrorResponse {
                     error: "Failed to analyze repository".to_string(),
                 })
             }
         }
     } else {
-        warn!("Project not found: {}", project_name);
+        warn!("Project not found: {project_name}");
         HttpResponse::NotFound().json(ErrorResponse {
-            error: format!("Project '{}' not found", project_name),
+            error: format!("Project '{project_name}' not found"),
         })
     }
 }
@@ -239,13 +239,15 @@ pub async fn get_repository_map(
     let project_name = project_name.into_inner();
 
     if let Some(project_path) = config.projects.get(&project_name) {
-        debug!("Generating repository map for project: {}", project_name);
-        
+        debug!("Generating repository map for project: {project_name}");
+
         let mut mapper = RepositoryMapper::new();
         match mapper.analyze_repository(project_path) {
             Ok(()) => {
                 let map = mapper.generate_repository_map();
-                info!("Successfully generated repository map for: {}", project_name);
+                info!(
+                    "Successfully generated repository map for: {project_name}"
+                );
                 let response = RepositoryMapResponse {
                     project_name: project_name.clone(),
                     map,
@@ -254,16 +256,18 @@ pub async fn get_repository_map(
                 HttpResponse::Ok().json(response)
             }
             Err(e) => {
-                error!("Error generating repository map for {}: {}", project_name, e);
+                error!(
+                    "Error generating repository map for {project_name}: {e}"
+                );
                 HttpResponse::InternalServerError().json(ErrorResponse {
                     error: "Failed to generate repository map".to_string(),
                 })
             }
         }
     } else {
-        warn!("Project not found: {}", project_name);
+        warn!("Project not found: {project_name}");
         HttpResponse::NotFound().json(ErrorResponse {
-            error: format!("Project '{}' not found", project_name),
+            error: format!("Project '{project_name}' not found"),
         })
     }
 }

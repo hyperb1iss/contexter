@@ -159,8 +159,6 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
             output,
             json,
             focus,
-        } => {
-            cli_handlers::handle_repo_map_generate(path, dependencies, order, output, json, focus)
-        }
+        } => cli_handlers::handle_repo_map_generate(path, dependencies, order, output, json, focus),
     }
 }

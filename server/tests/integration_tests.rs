@@ -65,8 +65,7 @@ fn assert_cors_headers(headers: &actix_web::http::header::HeaderMap) {
     assert!(
         headers.contains_key("access-control-allow-credentials")
             || headers.contains_key("access-control-expose-headers"),
-        "CORS headers not found in response: {:?}",
-        headers
+        "CORS headers not found in response: {headers:?}"
     );
 }
 
@@ -158,7 +157,7 @@ async fn test_run_contexter() {
     let req = test::TestRequest::post()
         .uri("/api/v1/projects/test_project")
         .insert_header(("X-API-Key", TEST_API_KEY))
-        .set_json(&serde_json::json!({
+        .set_json(serde_json::json!({
             "paths": ["file1.rs", "subfolder"]
         }))
         .to_request();

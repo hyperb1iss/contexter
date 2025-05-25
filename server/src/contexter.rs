@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 ///
 /// # Returns
 ///
-/// A Result containing a Vec of PathBuf for relevant files, or an IO error.
+/// A Result containing a Vec of `PathBuf` for relevant files, or an IO error.
 pub fn gather_relevant_files(
     directory: &str,
     extensions: Vec<&str>,
@@ -64,7 +64,7 @@ pub fn gather_relevant_files(
     for result in walker {
         match result {
             Ok(entry) => {
-                if entry.file_type().map_or(false, |ft| ft.is_file()) {
+                if entry.file_type().is_some_and(|ft| ft.is_file()) {
                     let path = entry.path();
                     if !is_excluded(path, &exclude_patterns)
                         && !is_likely_binary(path)?
@@ -78,7 +78,7 @@ pub fn gather_relevant_files(
                 }
             }
             Err(err) => {
-                eprintln!("Error reading file: {}", err);
+                eprintln!("Error reading file: {err}");
             }
         }
     }
@@ -128,7 +128,7 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 ///
 /// # Arguments
 ///
-/// * `files` - A vector of PathBuf representing the files to concatenate.
+/// * `files` - A vector of `PathBuf` representing the files to concatenate.
 ///
 /// # Returns
 ///
@@ -174,7 +174,11 @@ pub fn concatenate_files(mut files: Vec<PathBuf>) -> io::Result<(String, Vec<Str
             file_info.push('\n');
 
             // Categorize the file based on its extension
-            let file_ext = path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_lowercase();
+            let file_ext = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or("")
+                .to_lowercase();
             match file_ext.as_str() {
                 "toml" | "json" | "yaml" | "yml" => config_files.push_str(&file_info),
                 "rs" => source_files.push_str(&file_info),
@@ -196,9 +200,9 @@ pub fn concatenate_files(mut files: Vec<PathBuf>) -> io::Result<(String, Vec<Str
     ];
 
     // Construct the final content string
-    for (section_name, section_content) in sections.iter() {
+    for (section_name, section_content) in &sections {
         if !section_content.is_empty() {
-            content.push_str(&format!("========================================\nSection: {}\n========================================\n", section_name));
+            content.push_str(&format!("========================================\nSection: {section_name}\n========================================\n"));
             content.push_str(section_content);
         }
     }

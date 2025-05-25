@@ -1,7 +1,7 @@
+use log::{debug, info, warn};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
-use log::{debug, info, warn};
 
 /// Represents a code component (function, method, class) in the repository
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,90 +108,105 @@ impl RepositoryMapper {
     }
 
     /// Analyze a repository and build the dependency graph
-    pub fn analyze_repository(&mut self, repo_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Starting repository analysis for: {:?}", repo_path);
-        
+    pub fn analyze_repository(
+        &mut self,
+        repo_path: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        info!("Starting repository analysis for: {repo_path:?}");
+
         // Step 1: Discover and parse files
         self.discover_files(repo_path)?;
-        
+
         // Step 2: Build dependency graph
         self.build_dependency_graph()?;
-        
+
         // Step 3: Detect cycles using Tarjan's algorithm
         self.detect_cycles();
-        
+
         // Step 4: Compute topological order
         self.compute_topological_order()?;
-        
+
         // Step 5: Generate insights
         self.generate_insights();
-        
-        info!("Repository analysis complete. Found {} components", self.graph.components.len());
+
+        info!(
+            "Repository analysis complete. Found {} components",
+            self.graph.components.len()
+        );
         Ok(())
     }
 
     /// Discover all relevant source files in the repository
     fn discover_files(&mut self, repo_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("Discovering files in: {:?}", repo_path);
-        
+        debug!("Discovering files in: {repo_path:?}");
+
         // Use existing file gathering logic from contexter
         let files = crate::contexter::gather_relevant_files(
             repo_path.to_str().unwrap(),
             vec!["rs", "py", "js", "ts"], // Support common languages
-            vec![]
+            vec![],
         )?;
-        
+
         info!("Found {} source files", files.len());
         self.insights.total_files = files.len();
-        
+
         // For each file, extract basic components
         for file_path in files {
             self.parse_file(&file_path)?;
         }
-        
+
         Ok(())
     }
 
     /// Parse a single file to extract components
     fn parse_file(&mut self, file_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(file_path)?;
-        let extension = file_path.extension()
+        let extension = file_path
+            .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or("");
-        
+
         match extension {
             "rs" => self.parse_rust_file(file_path, &content)?,
             "py" => self.parse_python_file(file_path, &content)?,
             "js" | "ts" => self.parse_javascript_file(file_path, &content)?,
             _ => {} // Skip unsupported file types for now
         }
-        
+
         Ok(())
     }
 
     /// Basic Rust file parsing (simplified)
-    fn parse_rust_file(&mut self, file_path: &PathBuf, content: &str) -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_rust_file(
+        &mut self,
+        file_path: &PathBuf,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         use regex::Regex;
-        
+
         let fn_regex = Regex::new(r"(?m)^(\s*)(pub\s+)?fn\s+(\w+)\s*\(")?;
         let struct_regex = Regex::new(r"(?m)^(\s*)(pub\s+)?struct\s+(\w+)")?;
         let _impl_regex = Regex::new(r"(?m)^(\s*)impl\s+(?:<[^>]*>\s+)?(\w+)")?;
         let use_regex = Regex::new(r"(?m)^use\s+([^;]+);")?;
-        
+
         let mut line_number = 1;
         let mut imports = Vec::new();
-        
+
         // Extract imports
         for cap in use_regex.captures_iter(content) {
             imports.push(cap[1].to_string());
         }
-        
+
         // Extract functions
         for cap in fn_regex.captures_iter(content) {
-            let visibility = if cap.get(2).is_some() { Visibility::Public } else { Visibility::Private };
+            let visibility = if cap.get(2).is_some() {
+                Visibility::Public
+            } else {
+                Visibility::Private
+            };
             let name = cap[3].to_string();
             let id = format!("{}::{}", file_path.display(), name);
-            
+
             let component = CodeComponent {
                 id: id.clone(),
                 name,
@@ -204,17 +219,21 @@ impl RepositoryMapper {
                 dependents: Vec::new(),
                 complexity_score: 1,
             };
-            
+
             self.graph.components.insert(id, component);
             line_number += 1;
         }
-        
+
         // Extract structs
         for cap in struct_regex.captures_iter(content) {
-            let visibility = if cap.get(2).is_some() { Visibility::Public } else { Visibility::Private };
+            let visibility = if cap.get(2).is_some() {
+                Visibility::Public
+            } else {
+                Visibility::Private
+            };
             let name = cap[3].to_string();
             let id = format!("{}::{}", file_path.display(), name);
-            
+
             let component = CodeComponent {
                 id: id.clone(),
                 name,
@@ -227,29 +246,37 @@ impl RepositoryMapper {
                 dependents: Vec::new(),
                 complexity_score: 2,
             };
-            
+
             self.graph.components.insert(id, component);
             line_number += 1;
         }
-        
+
         Ok(())
     }
 
     /// Basic Python file parsing (placeholder)
-    fn parse_python_file(&mut self, file_path: &PathBuf, content: &str) -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_python_file(
+        &mut self,
+        file_path: &PathBuf,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         use regex::Regex;
-        
+
         let fn_regex = Regex::new(r"(?m)^(\s*)def\s+(\w+)\s*\(")?;
         let class_regex = Regex::new(r"(?m)^(\s*)class\s+(\w+):")?;
-        
+
         let mut line_number = 1;
-        
+
         // Extract functions
         for cap in fn_regex.captures_iter(content) {
             let name = cap[2].to_string();
             let id = format!("{}::{}", file_path.display(), name);
-            let visibility = if name.starts_with('_') { Visibility::Private } else { Visibility::Public };
-            
+            let visibility = if name.starts_with('_') {
+                Visibility::Private
+            } else {
+                Visibility::Public
+            };
+
             let component = CodeComponent {
                 id: id.clone(),
                 name,
@@ -262,17 +289,21 @@ impl RepositoryMapper {
                 dependents: Vec::new(),
                 complexity_score: 1,
             };
-            
+
             self.graph.components.insert(id, component);
             line_number += 1;
         }
-        
+
         // Extract classes
         for cap in class_regex.captures_iter(content) {
             let name = cap[2].to_string();
             let id = format!("{}::{}", file_path.display(), name);
-            let visibility = if name.starts_with('_') { Visibility::Private } else { Visibility::Public };
-            
+            let visibility = if name.starts_with('_') {
+                Visibility::Private
+            } else {
+                Visibility::Public
+            };
+
             let component = CodeComponent {
                 id: id.clone(),
                 name,
@@ -285,32 +316,39 @@ impl RepositoryMapper {
                 dependents: Vec::new(),
                 complexity_score: 2,
             };
-            
+
             self.graph.components.insert(id, component);
             line_number += 1;
         }
-        
+
         Ok(())
     }
 
     /// Basic JavaScript/TypeScript file parsing (placeholder)
-    fn parse_javascript_file(&mut self, file_path: &PathBuf, content: &str) -> Result<(), Box<dyn std::error::Error>> {
+    fn parse_javascript_file(
+        &mut self,
+        file_path: &PathBuf,
+        content: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         use regex::Regex;
-        
-        let fn_regex = Regex::new(r"(?m)function\s+(\w+)\s*\(|(?m)(\w+)\s*:\s*function\s*\(|(?m)const\s+(\w+)\s*=\s*\(")?;
+
+        let fn_regex = Regex::new(
+            r"(?m)function\s+(\w+)\s*\(|(?m)(\w+)\s*:\s*function\s*\(|(?m)const\s+(\w+)\s*=\s*\(",
+        )?;
         let class_regex = Regex::new(r"(?m)class\s+(\w+)")?;
-        
+
         let mut line_number = 1;
-        
+
         // Extract functions (simplified)
         for cap in fn_regex.captures_iter(content) {
-            let name = cap.get(1).or(cap.get(2)).or(cap.get(3))
-                .map(|m| m.as_str().to_string())
-                .unwrap_or_else(|| "anonymous".to_string());
-            
+            let name = cap
+                .get(1)
+                .or(cap.get(2))
+                .or(cap.get(3)).map_or_else(|| "anonymous".to_string(), |m| m.as_str().to_string());
+
             if name != "anonymous" {
                 let id = format!("{}::{}", file_path.display(), name);
-                
+
                 let component = CodeComponent {
                     id: id.clone(),
                     name,
@@ -323,17 +361,17 @@ impl RepositoryMapper {
                     dependents: Vec::new(),
                     complexity_score: 1,
                 };
-                
+
                 self.graph.components.insert(id, component);
                 line_number += 1;
             }
         }
-        
+
         // Extract classes
         for cap in class_regex.captures_iter(content) {
             let name = cap[1].to_string();
             let id = format!("{}::{}", file_path.display(), name);
-            
+
             let component = CodeComponent {
                 id: id.clone(),
                 name,
@@ -346,25 +384,25 @@ impl RepositoryMapper {
                 dependents: Vec::new(),
                 complexity_score: 2,
             };
-            
+
             self.graph.components.insert(id, component);
             line_number += 1;
         }
-        
+
         Ok(())
     }
 
     /// Build the dependency graph by parsing ASTs
     fn build_dependency_graph(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Building dependency graph");
-        
+
         // For now, this is a simplified implementation
         // In a full implementation, this would analyze function calls, imports, etc.
         // to build the actual dependency edges
-        
+
         // Create some example dependencies based on file structure
         let component_ids: Vec<String> = self.graph.components.keys().cloned().collect();
-        
+
         for (i, from_id) in component_ids.iter().enumerate() {
             if let Some(to_id) = component_ids.get(i + 1) {
                 // Create a simple dependency chain for demonstration
@@ -373,7 +411,7 @@ impl RepositoryMapper {
                     to: to_id.clone(),
                     edge_type: EdgeType::FunctionCall,
                 });
-                
+
                 // Update component dependencies
                 if let Some(from_component) = self.graph.components.get_mut(from_id) {
                     from_component.dependencies.push(to_id.clone());
@@ -383,7 +421,7 @@ impl RepositoryMapper {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -391,7 +429,7 @@ impl RepositoryMapper {
     fn detect_cycles(&mut self) {
         // Implementation of Tarjan's strongly connected components algorithm
         debug!("Detecting cycles in dependency graph");
-        
+
         // Placeholder - actual cycle detection will be implemented
         self.graph.cycles = Vec::new();
     }
@@ -399,23 +437,23 @@ impl RepositoryMapper {
     /// Compute topological ordering of components (dependencies first)
     fn compute_topological_order(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Computing topological order");
-        
+
         // Kahn's algorithm for topological sorting
         let mut in_degree: HashMap<String, usize> = HashMap::new();
         let mut adj_list: HashMap<String, Vec<String>> = HashMap::new();
-        
+
         // Initialize in-degree and adjacency list
         for component_id in self.graph.components.keys() {
             in_degree.insert(component_id.clone(), 0);
             adj_list.insert(component_id.clone(), Vec::new());
         }
-        
+
         // Build adjacency list and calculate in-degrees
         for edge in &self.graph.edges {
             adj_list.get_mut(&edge.from).unwrap().push(edge.to.clone());
             *in_degree.get_mut(&edge.to).unwrap() += 1;
         }
-        
+
         // Queue for nodes with no incoming edges
         let mut queue: VecDeque<String> = VecDeque::new();
         for (node, &degree) in &in_degree {
@@ -423,12 +461,12 @@ impl RepositoryMapper {
                 queue.push_back(node.clone());
             }
         }
-        
+
         // Process nodes in topological order
         let mut topo_order = Vec::new();
         while let Some(node) = queue.pop_front() {
             topo_order.push(node.clone());
-            
+
             if let Some(neighbors) = adj_list.get(&node) {
                 for neighbor in neighbors {
                     let degree = in_degree.get_mut(neighbor).unwrap();
@@ -439,12 +477,12 @@ impl RepositoryMapper {
                 }
             }
         }
-        
+
         // Check for cycles
         if topo_order.len() != self.graph.components.len() {
             warn!("Cycles detected in dependency graph");
         }
-        
+
         self.topological_order = topo_order;
         Ok(())
     }
@@ -452,27 +490,31 @@ impl RepositoryMapper {
     /// Generate repository insights and statistics
     pub fn generate_insights(&mut self) {
         debug!("Generating repository insights");
-        
+
         self.insights.total_components = self.graph.components.len();
-        
+
         // Find most connected components (high in-degree + out-degree)
-        let mut component_connections: Vec<(String, usize)> = self.graph.components
+        let mut component_connections: Vec<(String, usize)> = self
+            .graph
+            .components
             .iter()
             .map(|(id, component)| {
                 let connections = component.dependencies.len() + component.dependents.len();
                 (id.clone(), connections)
             })
             .collect();
-        
+
         component_connections.sort_by(|a, b| b.1.cmp(&a.1));
         self.insights.most_connected_components = component_connections
             .into_iter()
             .take(10)
             .map(|(id, _)| id)
             .collect();
-        
+
         // Find entry points (components with no dependencies)
-        self.insights.entry_points = self.graph.components
+        self.insights.entry_points = self
+            .graph
+            .components
             .iter()
             .filter(|(_, component)| component.dependencies.is_empty())
             .map(|(id, _)| id.clone())
@@ -484,22 +526,24 @@ impl RepositoryMapper {
         let mut map = String::new();
         map.push_str("Repository Structure\n");
         map.push_str("===================\n\n");
-        
+
         // Quick overview
-        map.push_str(&format!("Components: {} | Entry Points: {} | Cycles: {}\n\n", 
+        map.push_str(&format!(
+            "Components: {} | Entry Points: {} | Cycles: {}\n\n",
             self.insights.total_components,
-            self.insights.entry_points.len(), 
+            self.insights.entry_points.len(),
             self.graph.cycles.len()
         ));
-        
+
         // Group components by file path for organized display
         let mut file_groups: HashMap<PathBuf, Vec<&CodeComponent>> = HashMap::new();
         for component in self.graph.components.values() {
-            file_groups.entry(component.file_path.clone())
+            file_groups
+                .entry(component.file_path.clone())
                 .or_default()
                 .push(component);
         }
-        
+
         for (file_path, components) in file_groups {
             map.push_str(&format!("{}\n", file_path.display()));
             for component in components {
@@ -525,47 +569,66 @@ impl RepositoryMapper {
             }
             map.push('\n');
         }
-        
+
         // Add insights section
         map.push_str("Key Insights\n");
         map.push_str("------------\n");
-        
+
         if !self.insights.entry_points.is_empty() {
             map.push_str("Entry Points:\n");
             for entry_id in &self.insights.entry_points {
                 if let Some(component) = self.graph.components.get(entry_id) {
-                    map.push_str(&format!("  {} ({})\n", component.name, component.file_path.display()));
+                    map.push_str(&format!(
+                        "  {} ({})\n",
+                        component.name,
+                        component.file_path.display()
+                    ));
                 }
             }
             map.push('\n');
         }
-        
+
         if !self.insights.most_connected_components.is_empty() {
             map.push_str("Most Connected:\n");
-            for (i, component_id) in self.insights.most_connected_components.iter().take(5).enumerate() {
+            for (i, component_id) in self
+                .insights
+                .most_connected_components
+                .iter()
+                .take(5)
+                .enumerate()
+            {
                 if let Some(component) = self.graph.components.get(component_id) {
-                    map.push_str(&format!("  {}. {} ({})\n", i + 1, component.name, component.file_path.display()));
+                    map.push_str(&format!(
+                        "  {}. {} ({})\n",
+                        i + 1,
+                        component.name,
+                        component.file_path.display()
+                    ));
                 }
             }
         }
-        
+
         map
     }
 
-    /// Get processing order for incremental context building (like DocAgent)
+    /// Get processing order for incremental context building (like `DocAgent`)
     pub fn get_processing_order(&self) -> &[String] {
         &self.topological_order
     }
 
     /// Get components that should be processed before the given component
     pub fn get_dependencies(&self, component_id: &str) -> Option<&[String]> {
-        self.graph.components.get(component_id)
+        self.graph
+            .components
+            .get(component_id)
             .map(|component| component.dependencies.as_slice())
     }
 
     /// Get components that depend on the given component
     pub fn get_dependents(&self, component_id: &str) -> Option<&[String]> {
-        self.graph.components.get(component_id)
+        self.graph
+            .components
+            .get(component_id)
             .map(|component| component.dependents.as_slice())
     }
 }
@@ -574,4 +637,4 @@ impl Default for RepositoryMapper {
     fn default() -> Self {
         Self::new()
     }
-} 
+}
