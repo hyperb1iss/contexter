@@ -27,13 +27,13 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 p-6">
+        <div className="from-cyber-900 via-cyber-800 to-cyber-900 flex h-full w-full items-center justify-center bg-gradient-to-br p-6">
           <div className="space-y-4 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-red-500/30 bg-red-500/20">
               <AlertTriangle className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="text-xl font-semibold text-white">Something went wrong</h2>
-            <p className="max-w-xs text-sm text-cyber-300">
+            <p className="text-cyber-300 max-w-xs text-sm">
               The extension encountered an unexpected error. Please try refreshing or restart the
               extension.
             </p>

@@ -6,10 +6,10 @@ export default function ProjectDetails() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="border-b border-cyber-600/30 p-4">
+      <div className="border-cyber-600/30 border-b p-4">
         <button
           onClick={() => setCurrentProject(null)}
-          className="flex items-center text-cyber-300 transition-colors hover:text-neon-400"
+          className="text-cyber-300 hover:text-neon-400 flex items-center transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Projects

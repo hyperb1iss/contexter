@@ -7,10 +7,10 @@ interface HeaderProps {
 
 export default function Header({ onRefresh }: HeaderProps) {
   return (
-    <header className="glass-dark border-b border-neon-500/20 p-4">
+    <header className="glass-dark border-neon-500/20 border-b p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="pulse-dot flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-neon-500 to-electric-600">
+          <div className="pulse-dot from-neon-500 to-electric-600 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r">
             <Zap className="h-5 w-5 text-white" />
           </div>
           <h1 className="gradient-text font-mono text-xl font-bold tracking-tight">Contexter</h1>
@@ -22,7 +22,7 @@ export default function Header({ onRefresh }: HeaderProps) {
             className={cn(
               'rounded-lg p-2 transition-all duration-200',
               'bg-cyber-700/50 hover:bg-cyber-600/70',
-              'border border-cyber-500/30 hover:border-neon-500/50',
+              'border-cyber-500/30 hover:border-neon-500/50 border',
               'text-cyber-300 hover:text-neon-400',
               'glow-border'
             )}
@@ -36,7 +36,7 @@ export default function Header({ onRefresh }: HeaderProps) {
             className={cn(
               'rounded-lg p-2 transition-all duration-200',
               'bg-cyber-700/50 hover:bg-cyber-600/70',
-              'border border-cyber-500/30 hover:border-neon-500/50',
+              'border-cyber-500/30 hover:border-neon-500/50 border',
               'text-cyber-300 hover:text-neon-400',
               'glow-border'
             )}

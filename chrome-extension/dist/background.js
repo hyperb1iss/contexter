@@ -1,1 +1,0 @@
-(function(){"use strict";chrome.runtime.onInstalled.addListener(()=>{console.log("🚀 Contexter extension installed and ready!")}),chrome.action.onClicked.addListener(e=>{console.log("Extension clicked on tab:",e.url)})})();

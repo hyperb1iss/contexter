@@ -62,18 +62,18 @@ function App() {
 
   if (!settings.apiKey || !settings.serverUrl) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 p-6">
+      <div className="from-cyber-900 via-cyber-800 to-cyber-900 flex h-full w-full items-center justify-center bg-gradient-to-br p-6">
         <div className="space-y-4 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-neon-500 to-electric-600">
+          <div className="from-neon-500 to-electric-600 mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r">
             <Zap className="h-8 w-8 text-white" />
           </div>
           <h2 className="gradient-text text-xl font-semibold">Welcome to Contexter</h2>
-          <p className="max-w-xs text-sm text-cyber-300">
+          <p className="text-cyber-300 max-w-xs text-sm">
             Please configure your API key and server URL to get started.
           </p>
           <button
             onClick={() => chrome.runtime.openOptionsPage()}
-            className="glow-border rounded-lg bg-neon-600 px-4 py-2 text-white transition-colors hover:bg-neon-500"
+            className="glow-border bg-neon-600 hover:bg-neon-500 rounded-lg px-4 py-2 text-white transition-colors"
           >
             Open Settings
           </button>
@@ -84,7 +84,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="h-full w-full overflow-hidden bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 text-white">
+      <div className="from-cyber-900 via-cyber-800 to-cyber-900 h-full w-full overflow-hidden bg-gradient-to-br text-white">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
           <div
