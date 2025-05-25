@@ -2,6 +2,7 @@ use ignore::WalkBuilder;
 use regex::Regex;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::fmt::Write;
 use std::fs::{metadata, read_to_string};
 use std::hash::{Hash, Hasher};
 use std::io;
@@ -20,7 +21,7 @@ use std::path::{Path, PathBuf};
 /// A Result containing a Vec of `PathBuf` for relevant files, or an IO error.
 pub fn gather_relevant_files(
     directory: &str,
-    extensions: Vec<&str>,
+    extensions: &[&str],
     excludes: Vec<String>,
 ) -> io::Result<Vec<PathBuf>> {
     let project_dir = PathBuf::from(directory);
@@ -159,16 +160,18 @@ pub fn concatenate_files(mut files: Vec<PathBuf>) -> io::Result<(String, Vec<Str
             // Prepare file metadata
             let mut file_info = String::new();
             let metadata = metadata(&path)?;
-            file_info.push_str(&format!(
+            write!(
+                &mut file_info,
                 "========================================\n\
-                File: {:?}\n\
+                File: {}\n\
                 Size: {} bytes\n\
                 Last Modified: {:?}\n\
                 ========================================\n",
-                path,
+                path.display(),
                 metadata.len(),
                 metadata.modified()?
-            ));
+            )
+            .unwrap();
 
             file_info.push_str(&file_content);
             file_info.push('\n');
@@ -202,7 +205,8 @@ pub fn concatenate_files(mut files: Vec<PathBuf>) -> io::Result<(String, Vec<Str
     // Construct the final content string
     for (section_name, section_content) in &sections {
         if !section_content.is_empty() {
-            content.push_str(&format!("========================================\nSection: {section_name}\n========================================\n"));
+            use std::fmt::Write;
+            write!(&mut content, "========================================\nSection: {section_name}\n========================================\n").unwrap();
             content.push_str(section_content);
         }
     }

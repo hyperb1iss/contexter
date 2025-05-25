@@ -123,19 +123,19 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
             directory,
             extensions,
             ignore,
-        } => cli_handlers::handle_gather(directory, extensions, ignore),
+        } => cli_handlers::handle_gather(&directory, &extensions, ignore),
         Cli::Config { cmd } => match cmd {
             ConfigCommand::AddProject { name, path } => {
-                cli_handlers::handle_config_add_project(&mut config, name, path)
+                cli_handlers::handle_config_add_project(&mut config, &name, &path)
             }
             ConfigCommand::RemoveProject { name } => {
-                cli_handlers::handle_config_remove_project(&mut config, name)
+                cli_handlers::handle_config_remove_project(&mut config, &name)
             }
             ConfigCommand::GenerateKey { name } => {
-                cli_handlers::handle_config_generate_key(&mut config, name)
+                cli_handlers::handle_config_generate_key(&mut config, &name)
             }
             ConfigCommand::RemoveKey { name } => {
-                cli_handlers::handle_config_remove_key(&mut config, name)
+                cli_handlers::handle_config_remove_key(&mut config, &name)
             }
             ConfigCommand::ListKeys => {
                 cli_handlers::handle_config_list_keys(&config);
@@ -145,7 +145,7 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
                 cli_handlers::handle_config_set_port(&mut config, port)
             }
             ConfigCommand::SetAddress { address } => {
-                cli_handlers::handle_config_set_address(&mut config, address)
+                cli_handlers::handle_config_set_address(&mut config, &address)
             }
             ConfigCommand::List => {
                 cli_handlers::handle_config_list(&config);
@@ -159,6 +159,13 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
             output,
             json,
             focus,
-        } => cli_handlers::handle_repo_map_generate(path, dependencies, order, output, json, focus),
+        } => cli_handlers::handle_repo_map_generate(
+            &path,
+            dependencies,
+            order,
+            output,
+            json,
+            focus.as_ref(),
+        ),
     }
 }

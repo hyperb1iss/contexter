@@ -33,13 +33,13 @@ async fn test_api_key_validation() {
     let req = test::TestRequest::default()
         .insert_header(("X-API-Key", key.as_str()))
         .to_http_request();
-    assert!(validate_api_key(&req, &config).await);
+    assert!(validate_api_key(&req, &config));
 
     let invalid_key = "invalid_key";
     let req = test::TestRequest::default()
         .insert_header(("X-API-Key", invalid_key))
         .to_http_request();
-    assert!(!validate_api_key(&req, &config).await);
+    assert!(!validate_api_key(&req, &config));
 }
 
 #[tokio::test]

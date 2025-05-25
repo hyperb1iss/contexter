@@ -21,13 +21,15 @@ pub fn hash_api_key(key: &str) -> String {
 }
 
 /// Validates the API key provided in the request against the stored API keys in the configuration.
-pub async fn validate_api_key(req: &HttpRequest, config: &Config) -> bool {
+pub fn validate_api_key(req: &HttpRequest, config: &Config) -> bool {
     if config.api_keys.is_empty() {
         return false;
     }
 
     if let Some(api_key) = req.headers().get("X-API-Key") {
-        let api_key = api_key.to_str().unwrap_or("");
+        let api_key = api_key
+            .to_str()
+            .expect("API key header should be valid UTF-8");
         let hashed_key = hash_api_key(api_key);
         config
             .api_keys

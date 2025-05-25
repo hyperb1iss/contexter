@@ -29,7 +29,7 @@ fn test_gather_relevant_files_basic() -> std::io::Result<()> {
     let dir_path = dir.path();
     create_test_files(dir_path)?;
 
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), &[], vec![])?;
 
     assert_eq!(files.len(), 3); // test1.txt, test2.rs, test3.txt
     assert!(files.iter().any(|f| f.ends_with("test1.txt")));
@@ -49,7 +49,7 @@ fn test_exclusion_patterns() -> std::io::Result<()> {
     // Exclude .txt files
     let files = gather_relevant_files(
         dir_path.to_str().unwrap(),
-        vec![],
+        &[],
         vec![String::from(".*\\.txt")],
     )?;
 
@@ -66,7 +66,7 @@ fn test_concatenate_files() -> std::io::Result<()> {
     let dir_path = dir.path();
     create_test_files(dir_path)?;
 
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), &[], vec![])?;
     let (content, _) = concatenate_files(files)?;
 
     assert!(content.contains("Size:"));
@@ -102,7 +102,7 @@ fn test_file_order_and_duplicate_detection() -> std::io::Result<()> {
     let mut duplicate_file = File::create(&duplicate_file_path)?;
     writeln!(duplicate_file, "This is unique content in test file 1.")?; // Same as test1.txt
 
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), &[], vec![])?;
     let (content, filenames) = concatenate_files(files)?;
 
     let content_lines: Vec<&str> = content.lines().collect();
@@ -173,7 +173,7 @@ fn test_binary_file_skipping() -> std::io::Result<()> {
     let mut binary_file = File::create(&binary_file_path)?;
     binary_file.write_all(&[0u8; 1024])?;
 
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), &[], vec![])?;
 
     assert!(!files.iter().any(|f| f.ends_with("binary_file.bin")));
 
@@ -191,7 +191,7 @@ fn test_built_in_exclusions() -> std::io::Result<()> {
     std::fs::create_dir(&node_modules_path)?;
     File::create(node_modules_path.join("package.json"))?;
 
-    let files = gather_relevant_files(dir_path.to_str().unwrap(), vec![], vec![])?;
+    let files = gather_relevant_files(dir_path.to_str().unwrap(), &[], vec![])?;
 
     assert!(!files
         .iter()

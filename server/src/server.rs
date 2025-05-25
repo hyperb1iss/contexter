@@ -80,13 +80,15 @@ pub fn config_routes(cfg: &mut web::ServiceConfig) {
     );
 }
 
+#[allow(clippy::future_not_send)]
 pub async fn run_server(config: Config) -> std::io::Result<()> {
+    // Extract values before creating the app state to avoid Send issues
+    let listen_address = config.listen_address.clone();
+    let port = config.port;
+
     let app_state = web::Data::new(AppState {
         config: Arc::new(RwLock::new(config)),
     });
-
-    let listen_address = app_state.config.read().await.listen_address.clone();
-    let port = app_state.config.read().await.port;
 
     HttpServer::new(move || {
         let cors = Cors::permissive();

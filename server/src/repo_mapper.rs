@@ -1,6 +1,7 @@
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 /// Represents a code component (function, method, class) in the repository
@@ -112,19 +113,19 @@ impl RepositoryMapper {
         &mut self,
         repo_path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Starting repository analysis for: {repo_path:?}");
+        info!("Starting repository analysis for: {}", repo_path.display());
 
         // Step 1: Discover and parse files
         self.discover_files(repo_path)?;
 
         // Step 2: Build dependency graph
-        self.build_dependency_graph()?;
+        self.build_dependency_graph();
 
         // Step 3: Detect cycles using Tarjan's algorithm
         self.detect_cycles();
 
         // Step 4: Compute topological order
-        self.compute_topological_order()?;
+        self.compute_topological_order();
 
         // Step 5: Generate insights
         self.generate_insights();
@@ -138,12 +139,14 @@ impl RepositoryMapper {
 
     /// Discover all relevant source files in the repository
     fn discover_files(&mut self, repo_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("Discovering files in: {repo_path:?}");
+        debug!("Discovering files in: {}", repo_path.display());
 
         // Use existing file gathering logic from contexter
         let files = crate::contexter::gather_relevant_files(
-            repo_path.to_str().unwrap(),
-            vec!["rs", "py", "js", "ts"], // Support common languages
+            repo_path
+                .to_str()
+                .expect("Repository path should be valid UTF-8"),
+            &["rs", "py", "js", "ts"], // Support common languages
             vec![],
         )?;
 
@@ -179,7 +182,7 @@ impl RepositoryMapper {
     /// Basic Rust file parsing (simplified)
     fn parse_rust_file(
         &mut self,
-        file_path: &PathBuf,
+        file_path: &Path,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use regex::Regex;
@@ -211,7 +214,7 @@ impl RepositoryMapper {
                 id: id.clone(),
                 name,
                 component_type: ComponentType::Function,
-                file_path: file_path.clone(),
+                file_path: file_path.to_path_buf(),
                 start_line: line_number, // Simplified - would need proper line counting
                 end_line: line_number + 10, // Simplified
                 visibility,
@@ -238,7 +241,7 @@ impl RepositoryMapper {
                 id: id.clone(),
                 name,
                 component_type: ComponentType::Class, // Treating struct as class for simplicity
-                file_path: file_path.clone(),
+                file_path: file_path.to_path_buf(),
                 start_line: line_number,
                 end_line: line_number + 5,
                 visibility,
@@ -257,7 +260,7 @@ impl RepositoryMapper {
     /// Basic Python file parsing (placeholder)
     fn parse_python_file(
         &mut self,
-        file_path: &PathBuf,
+        file_path: &Path,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use regex::Regex;
@@ -281,7 +284,7 @@ impl RepositoryMapper {
                 id: id.clone(),
                 name,
                 component_type: ComponentType::Function,
-                file_path: file_path.clone(),
+                file_path: file_path.to_path_buf(),
                 start_line: line_number,
                 end_line: line_number + 10,
                 visibility,
@@ -308,7 +311,7 @@ impl RepositoryMapper {
                 id: id.clone(),
                 name,
                 component_type: ComponentType::Class,
-                file_path: file_path.clone(),
+                file_path: file_path.to_path_buf(),
                 start_line: line_number,
                 end_line: line_number + 10,
                 visibility,
@@ -327,7 +330,7 @@ impl RepositoryMapper {
     /// Basic JavaScript/TypeScript file parsing (placeholder)
     fn parse_javascript_file(
         &mut self,
-        file_path: &PathBuf,
+        file_path: &Path,
         content: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         use regex::Regex;
@@ -344,7 +347,8 @@ impl RepositoryMapper {
             let name = cap
                 .get(1)
                 .or(cap.get(2))
-                .or(cap.get(3)).map_or_else(|| "anonymous".to_string(), |m| m.as_str().to_string());
+                .or(cap.get(3))
+                .map_or_else(|| "anonymous".to_string(), |m| m.as_str().to_string());
 
             if name != "anonymous" {
                 let id = format!("{}::{}", file_path.display(), name);
@@ -353,7 +357,7 @@ impl RepositoryMapper {
                     id: id.clone(),
                     name,
                     component_type: ComponentType::Function,
-                    file_path: file_path.clone(),
+                    file_path: file_path.to_path_buf(),
                     start_line: line_number,
                     end_line: line_number + 10,
                     visibility: Visibility::Public, // JS doesn't have traditional visibility
@@ -376,7 +380,7 @@ impl RepositoryMapper {
                 id: id.clone(),
                 name,
                 component_type: ComponentType::Class,
-                file_path: file_path.clone(),
+                file_path: file_path.to_path_buf(),
                 start_line: line_number,
                 end_line: line_number + 10,
                 visibility: Visibility::Public,
@@ -393,7 +397,7 @@ impl RepositoryMapper {
     }
 
     /// Build the dependency graph by parsing ASTs
-    fn build_dependency_graph(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    fn build_dependency_graph(&mut self) {
         debug!("Building dependency graph");
 
         // For now, this is a simplified implementation
@@ -421,8 +425,6 @@ impl RepositoryMapper {
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Detect cycles in the dependency graph using Tarjan's algorithm
@@ -435,7 +437,7 @@ impl RepositoryMapper {
     }
 
     /// Compute topological ordering of components (dependencies first)
-    fn compute_topological_order(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    fn compute_topological_order(&mut self) {
         debug!("Computing topological order");
 
         // Kahn's algorithm for topological sorting
@@ -450,8 +452,13 @@ impl RepositoryMapper {
 
         // Build adjacency list and calculate in-degrees
         for edge in &self.graph.edges {
-            adj_list.get_mut(&edge.from).unwrap().push(edge.to.clone());
-            *in_degree.get_mut(&edge.to).unwrap() += 1;
+            adj_list
+                .get_mut(&edge.from)
+                .expect("Component should exist in adjacency list")
+                .push(edge.to.clone());
+            *in_degree
+                .get_mut(&edge.to)
+                .expect("Component should exist in in-degree map") += 1;
         }
 
         // Queue for nodes with no incoming edges
@@ -469,7 +476,9 @@ impl RepositoryMapper {
 
             if let Some(neighbors) = adj_list.get(&node) {
                 for neighbor in neighbors {
-                    let degree = in_degree.get_mut(neighbor).unwrap();
+                    let degree = in_degree
+                        .get_mut(neighbor)
+                        .expect("Neighbor should exist in in-degree map");
                     *degree -= 1;
                     if *degree == 0 {
                         queue.push_back(neighbor.clone());
@@ -484,7 +493,6 @@ impl RepositoryMapper {
         }
 
         self.topological_order = topo_order;
-        Ok(())
     }
 
     /// Generate repository insights and statistics
@@ -528,12 +536,14 @@ impl RepositoryMapper {
         map.push_str("===================\n\n");
 
         // Quick overview
-        map.push_str(&format!(
+        write!(
+            &mut map,
             "Components: {} | Entry Points: {} | Cycles: {}\n\n",
             self.insights.total_components,
             self.insights.entry_points.len(),
             self.graph.cycles.len()
-        ));
+        )
+        .unwrap();
 
         // Group components by file path for organized display
         let mut file_groups: HashMap<PathBuf, Vec<&CodeComponent>> = HashMap::new();
@@ -545,11 +555,10 @@ impl RepositoryMapper {
         }
 
         for (file_path, components) in file_groups {
-            map.push_str(&format!("{}\n", file_path.display()));
+            writeln!(&mut map, "{}", file_path.display()).unwrap();
             for component in components {
                 let type_indicator = match component.component_type {
-                    ComponentType::Function => "fn",
-                    ComponentType::Method => "fn",
+                    ComponentType::Function | ComponentType::Method => "fn",
                     ComponentType::Class => "struct",
                     ComponentType::Module => "mod",
                     ComponentType::Interface => "trait",
@@ -558,14 +567,16 @@ impl RepositoryMapper {
                     Visibility::Public => "pub ",
                     _ => "",
                 };
-                map.push_str(&format!(
-                    "  {}{} {} (deps: {}, used by: {})\n",
+                writeln!(
+                    &mut map,
+                    "  {}{} {} (deps: {}, used by: {})",
                     visibility,
                     type_indicator,
                     component.name,
                     component.dependencies.len(),
                     component.dependents.len()
-                ));
+                )
+                .unwrap();
             }
             map.push('\n');
         }
@@ -578,11 +589,13 @@ impl RepositoryMapper {
             map.push_str("Entry Points:\n");
             for entry_id in &self.insights.entry_points {
                 if let Some(component) = self.graph.components.get(entry_id) {
-                    map.push_str(&format!(
-                        "  {} ({})\n",
+                    writeln!(
+                        &mut map,
+                        "  {} ({})",
                         component.name,
                         component.file_path.display()
-                    ));
+                    )
+                    .unwrap();
                 }
             }
             map.push('\n');
@@ -598,12 +611,14 @@ impl RepositoryMapper {
                 .enumerate()
             {
                 if let Some(component) = self.graph.components.get(component_id) {
-                    map.push_str(&format!(
-                        "  {}. {} ({})\n",
+                    writeln!(
+                        &mut map,
+                        "  {}. {} ({})",
                         i + 1,
                         component.name,
                         component.file_path.display()
-                    ));
+                    )
+                    .unwrap();
                 }
             }
         }

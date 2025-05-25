@@ -30,21 +30,22 @@ fn hash_api_key(key: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
-async fn setup_test_app() -> (Config, web::Data<AppState>, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+fn setup_test_app() -> (Config, web::Data<AppState>, TempDir) {
+    let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let test_project_path = temp_dir.path().join("test_project");
-    std::fs::create_dir_all(&test_project_path).unwrap();
+    std::fs::create_dir_all(&test_project_path).expect("Failed to create test project directory");
 
     // Create dummy files for the test project
     File::create(test_project_path.join("file1.rs"))
-        .unwrap()
+        .expect("Failed to create file1.rs")
         .write_all(b"// test file1")
-        .unwrap();
-    std::fs::create_dir_all(test_project_path.join("subfolder")).unwrap();
+        .expect("Failed to write to file1.rs");
+    std::fs::create_dir_all(test_project_path.join("subfolder"))
+        .expect("Failed to create subfolder");
     File::create(test_project_path.join("subfolder/file2.rs"))
-        .unwrap()
+        .expect("Failed to create file2.rs")
         .write_all(b"// test file2")
-        .unwrap();
+        .expect("Failed to write to file2.rs");
 
     let mut config = Config::default();
     config.add_project("test_project".to_string(), test_project_path.clone());
@@ -74,7 +75,7 @@ async fn test_list_projects() {
     initialize_logger();
     info!("Running test_list_projects");
 
-    let (_, app_state, _temp_dir) = setup_test_app().await;
+    let (_, app_state, _temp_dir) = setup_test_app();
 
     let app = test::init_service(
         App::new()
@@ -97,7 +98,8 @@ async fn test_list_projects() {
     assert_cors_headers(resp.headers());
 
     let body = test::read_body(resp).await;
-    let resp: ProjectListResponse = serde_json::from_slice(&body).unwrap();
+    let resp: ProjectListResponse =
+        serde_json::from_slice(&body).expect("Failed to parse ProjectListResponse");
 
     assert_eq!(resp.projects.len(), 1);
     assert_eq!(resp.projects[0].name, "test_project");
@@ -108,7 +110,7 @@ async fn test_get_project_metadata() {
     initialize_logger();
     info!("Running test_get_project_metadata");
 
-    let (_, app_state, _temp_dir) = setup_test_app().await;
+    let (_, app_state, _temp_dir) = setup_test_app();
 
     let app = test::init_service(
         App::new()
@@ -131,7 +133,8 @@ async fn test_get_project_metadata() {
     assert_cors_headers(resp.headers());
 
     let body = test::read_body(resp).await;
-    let resp: ProjectMetadata = serde_json::from_slice(&body).unwrap();
+    let resp: ProjectMetadata =
+        serde_json::from_slice(&body).expect("Failed to parse ProjectMetadata");
 
     assert_eq!(resp.name, "test_project");
     assert!(!resp.files.is_empty());
@@ -144,7 +147,7 @@ async fn test_run_contexter() {
     initialize_logger();
     info!("Running test_run_contexter");
 
-    let (_, app_state, _temp_dir) = setup_test_app().await;
+    let (_, app_state, _temp_dir) = setup_test_app();
 
     let app = test::init_service(
         App::new()
@@ -170,7 +173,8 @@ async fn test_run_contexter() {
     assert_cors_headers(resp.headers());
 
     let body = test::read_body(resp).await;
-    let resp: ProjectContentResponse = serde_json::from_slice(&body).unwrap();
+    let resp: ProjectContentResponse =
+        serde_json::from_slice(&body).expect("Failed to parse ProjectContentResponse");
 
     assert!(!resp.content.is_empty());
     assert!(resp.content.contains("// test file1"));
@@ -182,7 +186,7 @@ async fn test_unauthorized_access() {
     initialize_logger();
     info!("Running test_unauthorized_access");
 
-    let (_, app_state, _temp_dir) = setup_test_app().await;
+    let (_, app_state, _temp_dir) = setup_test_app();
 
     let app = test::init_service(
         App::new()
@@ -209,7 +213,7 @@ async fn test_project_not_found() {
     initialize_logger();
     info!("Running test_project_not_found");
 
-    let (_, app_state, _temp_dir) = setup_test_app().await;
+    let (_, app_state, _temp_dir) = setup_test_app();
 
     let app = test::init_service(
         App::new()

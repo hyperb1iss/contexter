@@ -1,18 +1,23 @@
+#![allow(clippy::print_stdout)] // CLI tools appropriately use println! for output
+
 use crate::config::Config;
 use crate::contexter::{concatenate_files, gather_relevant_files};
 use crate::repo_mapper::RepositoryMapper;
 use crate::utils::{generate_api_key, hash_api_key};
 use log::info;
-use std::path::PathBuf;
+use std::fmt::Write;
+use std::path::{Path, PathBuf};
 
 pub fn handle_gather(
-    directory: PathBuf,
-    extensions: Vec<String>,
+    directory: &Path,
+    extensions: &[String],
     ignore: Vec<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let files = gather_relevant_files(
-        directory.to_str().unwrap(),
-        extensions.iter().map(AsRef::as_ref).collect(),
+        directory
+            .to_str()
+            .expect("Directory path should be valid UTF-8"),
+        &extensions.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
         ignore,
     )?;
     let (content, _) = concatenate_files(files)?;
@@ -22,20 +27,23 @@ pub fn handle_gather(
 
 pub fn handle_config_add_project(
     config: &mut Config,
-    name: String,
-    path: PathBuf,
+    name: &str,
+    path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    config.add_project(name.clone(), path.clone());
+    config.add_project(name.to_string(), path.to_path_buf());
     config.save()?;
-    info!("Project '{name}' added successfully with path {path:?}");
+    info!(
+        "Project '{name}' added successfully with path {}",
+        path.display()
+    );
     Ok(())
 }
 
 pub fn handle_config_remove_project(
     config: &mut Config,
-    name: String,
+    name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if config.remove_project(&name).is_some() {
+    if config.remove_project(name).is_some() {
         config.save()?;
         info!("Project '{name}' removed successfully");
     } else {
@@ -46,11 +54,11 @@ pub fn handle_config_remove_project(
 
 pub fn handle_config_generate_key(
     config: &mut Config,
-    name: String,
+    name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let new_key = generate_api_key();
     let hashed_key = hash_api_key(&new_key);
-    config.add_api_key(name.clone(), hashed_key);
+    config.add_api_key(name.to_string(), hashed_key);
     config.save()?;
     println!("New API key generated for '{name}': {new_key}");
     println!("Please store this key securely. It won't be displayed again.");
@@ -60,9 +68,9 @@ pub fn handle_config_generate_key(
 
 pub fn handle_config_remove_key(
     config: &mut Config,
-    name: String,
+    name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    config.remove_api_key(&name);
+    config.remove_api_key(name);
     config.save()?;
     info!("API key '{name}' removed successfully");
     Ok(())
@@ -87,9 +95,9 @@ pub fn handle_config_set_port(
 
 pub fn handle_config_set_address(
     config: &mut Config,
-    address: String,
+    address: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    config.listen_address = address.clone();
+    config.listen_address.clone_from(&address.to_string());
     config.save()?;
     info!("Listen address set to {address} successfully");
     Ok(())
@@ -101,7 +109,7 @@ pub fn handle_config_list(config: &Config) {
     println!("Listen Address: {}", config.listen_address);
     println!("Projects:");
     for (name, path) in &config.projects {
-        println!("  {name}: {path:?}");
+        println!("  {name}: {}", path.display());
     }
     println!("API Keys:");
     for name in config.api_keys.keys() {
@@ -111,18 +119,19 @@ pub fn handle_config_list(config: &Config) {
 
 // Repository mapping handlers
 
+#[allow(clippy::too_many_lines, clippy::cognitive_complexity)]
 pub fn handle_repo_map_generate(
-    path: PathBuf,
+    path: &PathBuf,
     show_dependencies: bool,
     show_order: bool,
     output: Option<PathBuf>,
     json_format: bool,
-    focus_component: Option<String>,
+    focus_component: Option<&String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    info!("Generating repository map for: {path:?}");
+    info!("Generating repository map for: {}", path.display());
 
     let mut mapper = RepositoryMapper::new();
-    mapper.analyze_repository(&path)?;
+    mapper.analyze_repository(path)?;
 
     let mut result = String::new();
 
@@ -136,7 +145,7 @@ pub fn handle_repo_map_generate(
             "most_connected": mapper.insights.most_connected_components,
             "processing_order": if show_order { Some(&mapper.topological_order) } else { None },
             "dependency_graph": if show_dependencies { Some(&mapper.graph.edges) } else { None },
-            "focus": focus_component.as_ref().and_then(|comp| {
+            "focus": focus_component.and_then(|comp| {
                 mapper.graph.components.get(comp).map(|c| serde_json::json!({
                     "component": c,
                     "dependencies": mapper.get_dependencies(comp),
@@ -151,38 +160,42 @@ pub fn handle_repo_map_generate(
         result.push_str("==============\n\n");
 
         // Quick stats
-        result.push_str(&format!("📍 {}\n", path.display()));
-        result.push_str(&format!(
+        writeln!(&mut result, "📍 {}", path.display())?;
+        write!(
+            &mut result,
             "📊 {} components, {} entry points, {} cycles\n\n",
             mapper.insights.total_components,
             mapper.insights.entry_points.len(),
             mapper.graph.cycles.len()
-        ));
+        )?;
 
         // Focus on specific component if requested
-        if let Some(focus) = &focus_component {
+        if let Some(focus) = focus_component {
             if let Some(component) = mapper.graph.components.values().find(|c| c.name == *focus) {
-                result.push_str(&format!("🎯 Focus: {}\n", component.name));
-                result.push_str(&format!(
-                    "   Type: {:?} | Visibility: {:?}\n",
+                writeln!(&mut result, "🎯 Focus: {}", component.name)?;
+                writeln!(
+                    &mut result,
+                    "   Type: {:?} | Visibility: {:?}",
                     component.component_type, component.visibility
-                ));
-                result.push_str(&format!("   File: {}\n", component.file_path.display()));
-                result.push_str(&format!(
+                )?;
+                writeln!(&mut result, "   File: {}", component.file_path.display())?;
+                write!(
+                    &mut result,
                     "   Dependencies: {} | Used by: {}\n\n",
                     component.dependencies.len(),
                     component.dependents.len()
-                ));
+                )?;
 
                 if !component.dependencies.is_empty() {
                     result.push_str("Dependencies:\n");
                     for dep_id in &component.dependencies {
                         if let Some(dep) = mapper.graph.components.get(dep_id) {
-                            result.push_str(&format!(
-                                "  → {} ({})\n",
+                            writeln!(
+                                &mut result,
+                                "  → {} ({})",
                                 dep.name,
                                 dep.file_path.display()
-                            ));
+                            )?;
                         }
                     }
                     result.push('\n');
@@ -192,17 +205,18 @@ pub fn handle_repo_map_generate(
                     result.push_str("Used by:\n");
                     for dep_id in &component.dependents {
                         if let Some(dep) = mapper.graph.components.get(dep_id) {
-                            result.push_str(&format!(
-                                "  ← {} ({})\n",
+                            writeln!(
+                                &mut result,
+                                "  ← {} ({})",
                                 dep.name,
                                 dep.file_path.display()
-                            ));
+                            )?;
                         }
                     }
                     result.push('\n');
                 }
             } else {
-                result.push_str(&format!("Component '{focus}' not found\n\n"));
+                write!(&mut result, "Component '{focus}' not found\n\n")?;
             }
         }
 
@@ -220,11 +234,11 @@ pub fn handle_repo_map_generate(
 
         result.push_str("Structure:\n");
         for (file_path, components) in file_groups {
-            result.push_str(&format!("  {}\n", file_path.display()));
+            writeln!(&mut result, "  {}", file_path.display())?;
             for component in components {
                 let type_indicator = match component.component_type {
-                    crate::repo_mapper::ComponentType::Function => "fn",
-                    crate::repo_mapper::ComponentType::Method => "fn",
+                    crate::repo_mapper::ComponentType::Function
+                    | crate::repo_mapper::ComponentType::Method => "fn",
                     crate::repo_mapper::ComponentType::Class => "struct",
                     crate::repo_mapper::ComponentType::Module => "mod",
                     crate::repo_mapper::ComponentType::Interface => "trait",
@@ -233,14 +247,15 @@ pub fn handle_repo_map_generate(
                     crate::repo_mapper::Visibility::Public => "pub",
                     _ => "",
                 };
-                result.push_str(&format!(
-                    "    {} {} {} ({}→{})\n",
+                writeln!(
+                    &mut result,
+                    "    {} {} {} ({}→{})",
                     visibility,
                     type_indicator,
                     component.name,
                     component.dependencies.len(),
                     component.dependents.len()
-                ));
+                )?;
             }
         }
         result.push('\n');
@@ -250,11 +265,12 @@ pub fn handle_repo_map_generate(
             result.push_str("Entry Points:\n");
             for entry_id in &mapper.insights.entry_points {
                 if let Some(entry) = mapper.graph.components.get(entry_id) {
-                    result.push_str(&format!(
-                        "  {} ({})\n",
+                    writeln!(
+                        &mut result,
+                        "  {} ({})",
                         entry.name,
                         entry.file_path.display()
-                    ));
+                    )?;
                 }
             }
             result.push('\n');
@@ -271,12 +287,13 @@ pub fn handle_repo_map_generate(
                 .enumerate()
             {
                 if let Some(component) = mapper.graph.components.get(comp_id) {
-                    result.push_str(&format!(
-                        "  {}. {} ({})\n",
+                    writeln!(
+                        &mut result,
+                        "  {}. {} ({})",
                         i + 1,
                         component.name,
                         component.file_path.display()
-                    ));
+                    )?;
                 }
             }
             result.push('\n');
@@ -287,14 +304,15 @@ pub fn handle_repo_map_generate(
             result.push_str("Processing Order (dependencies first):\n");
             for (i, component_id) in mapper.topological_order.iter().take(10).enumerate() {
                 if let Some(component) = mapper.graph.components.get(component_id) {
-                    result.push_str(&format!("  {}. {}\n", i + 1, component.name));
+                    writeln!(&mut result, "  {}. {}", i + 1, component.name)?;
                 }
             }
             if mapper.topological_order.len() > 10 {
-                result.push_str(&format!(
-                    "  ... and {} more\n",
+                writeln!(
+                    &mut result,
+                    "  ... and {} more",
                     mapper.topological_order.len() - 10
-                ));
+                )?;
             }
             result.push('\n');
         }
@@ -307,14 +325,15 @@ pub fn handle_repo_map_generate(
                     mapper.graph.components.get(&edge.from),
                     mapper.graph.components.get(&edge.to),
                 ) {
-                    result.push_str(&format!("  {} → {}\n", from.name, to.name));
+                    writeln!(&mut result, "  {} → {}", from.name, to.name)?;
                 }
             }
             if mapper.graph.edges.len() > 10 {
-                result.push_str(&format!(
-                    "  ... and {} more\n",
+                writeln!(
+                    &mut result,
+                    "  ... and {} more",
                     mapper.graph.edges.len() - 10
-                ));
+                )?;
             }
         }
     }
