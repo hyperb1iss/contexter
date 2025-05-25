@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod config;
 pub mod contexter;
+pub mod repo_mapper;
 pub mod server;
 pub mod utils;
 

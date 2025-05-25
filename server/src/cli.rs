@@ -32,6 +32,27 @@ pub enum Cli {
         #[structopt(subcommand)]
         cmd: ConfigCommand,
     },
+
+    #[structopt(name = "map", about = "Generate repository map and analysis")]
+    Map {
+        #[structopt(help = "Repository path to analyze", default_value = ".")]
+        path: PathBuf,
+
+        #[structopt(short, long, help = "Show dependency relationships")]
+        dependencies: bool,
+
+        #[structopt(short, long, help = "Show processing order")]
+        order: bool,
+
+        #[structopt(long, help = "Save to file")]
+        output: Option<PathBuf>,
+
+        #[structopt(short, long, help = "JSON format")]
+        json: bool,
+
+        #[structopt(long, help = "Component to focus on")]
+        focus: Option<String>,
+    },
 }
 
 #[derive(StructOpt)]
@@ -131,5 +152,15 @@ pub fn run_cli() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             }
         },
+        Cli::Map {
+            path,
+            dependencies,
+            order,
+            output,
+            json,
+            focus,
+        } => {
+            cli_handlers::handle_repo_map_generate(path, dependencies, order, output, json, focus)
+        }
     }
 }

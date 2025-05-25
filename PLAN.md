@@ -49,14 +49,14 @@ Contexter is a **focused developer tool** for generating high-quality context fr
 - **Language Detection**: Auto-detect file types and apply language-specific rules
 - **Size Limits**: Configurable max file size with warnings
 
-#### 📊 **Repository Mapping**
-- **Dependency Graph**: Parse imports/includes to show file relationships
-- **Directory Summary**: Generate high-level overview of project structure
-- **File Importance Scoring**: Rank files by:
+#### 📊 **Repository Mapping** ✅ **COMPLETED**
+- ✅ **Dependency Graph**: Parse imports/includes to show file relationships
+- ✅ **Directory Summary**: Generate high-level overview of project structure
+- ✅ **File Importance Scoring**: Rank files by:
   - How many other files import them
   - File size and complexity
   - Recent commit activity
-- **Context Recommendations**: Suggest relevant files based on current selection
+- ✅ **Context Recommendations**: Suggest relevant files based on current selection
 
 ---
 
@@ -64,12 +64,12 @@ Contexter is a **focused developer tool** for generating high-quality context fr
 
 ### Smart Repo Analysis
 
-#### 🧠 **Repository Mapping**
-- **Visual Project Map**: Generate ASCII/text-based repository structure
-- **Dependency Visualization**: Show import/export relationships
-- **Module Boundaries**: Identify logical groupings of related files
-- **Entry Points**: Automatically identify main files, exports, CLI entry points
-- **Architecture Overview**: Generate high-level project description
+#### 🧠 **Repository Mapping** ✅ **COMPLETED**
+- ✅ **Visual Project Map**: Generate ASCII/text-based repository structure
+- ✅ **Dependency Visualization**: Show import/export relationships
+- ✅ **Module Boundaries**: Identify logical groupings of related files
+- ✅ **Entry Points**: Automatically identify main files, exports, CLI entry points
+- ✅ **Architecture Overview**: Generate high-level project description
 
 #### 📈 **Intelligent File Selection**
 - **Related Files**: Auto-suggest files related to current selection
@@ -198,7 +198,7 @@ Rank files by relevance using:
 
 ### Phase 1 (Next 2-3 months)
 1. **Chrome extension UI overhaul** - React/TypeScript rewrite
-2. **Repository mapping engine** - Basic dependency analysis
+2. ✅ **Repository mapping engine** - Basic dependency analysis **COMPLETED**
 3. **Smart file selection** - Templates and quick filters
 4. **Better output formatting** - Multiple formats and token estimation
 

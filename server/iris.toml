@@ -1,0 +1,163 @@
+[package]
+name = "git-iris"
+version = "1.1.0"
+edition = "2024"
+authors = ["Stefanie Jane <stef@hyperbliss.tech>"]
+description = "AI-powered Git workflow assistant for smart commits, code reviews, changelogs, and release notes"
+readme = "README.md"
+homepage = "https://github.com/hyperb1iss/git-iris"
+repository = "https://github.com/hyperb1iss/git-iris"
+license = "Apache-2.0"
+keywords = ["git", "ai", "cli", "devtools", "productivity"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lib]
+name = "git_iris"
+path = "src/lib.rs"
+
+[[bin]]
+name = "git-iris"
+path = "src/main.rs"
+
+[features]
+integration = []
+
+[dependencies]
+anyhow = "1.0.86"
+async-trait = "0.1.88"
+chrono = "0.4.38"
+clap = { version = "4.5.36", features = ["derive", "cargo"] }
+colored = "3.0.0"
+console = "0.15.8"
+crossterm = "0.28.1"
+dirs = "6.0.0"
+futures = "0.3.30"
+git2 = "0.20.1"
+indicatif = "0.17.8"
+lazy_static = "1.5.0"
+llm = "1.1.0"
+log = "0.4.27"
+once_cell = "1.21.3"
+parking_lot = "0.12.1"
+rand = "0.9.0"
+ratatui = "0.29.0"
+regex = "1.10.6"
+reqwest = { version = "0.12.15", features = ["json"] }
+rmcp = { version = "0.1.5", features = ["server", "transport-sse-server"] }
+schemars = "0.8.21"
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.127"
+strum = "0.27.1"
+strum_macros = "0.27.1"
+tempfile = "3.19.1"
+textwrap = "0.16.1"
+tiktoken-rs = "0.6.0"
+tokio = { version = "1.44.2", features = ["full"] }
+tokio-retry = "0.3.0"
+toml = "0.8.19"
+tui-textarea = "0.7.0"
+unicode-width = "0.2.0"
+url = "2.5.0"
+
+[dev-dependencies]
+dotenv = "0.15.0"
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = { level = "allow", priority = 1 }
+
+[lints.clippy]
+# Base lint groups
+all = { level = "deny", priority = 0 }
+style = { level = "warn", priority = 1 }
+perf = { level = "deny", priority = 1 }
+
+# Pedantic lints
+pedantic = { level = "deny", priority = 10 }
+
+# Documentation allowances
+missing_errors_doc = { level = "allow", priority = 20 }
+missing_panics_doc = { level = "allow", priority = 20 }
+missing_safety_doc = { level = "allow", priority = 20 }
+
+# Code style allowances - These remain allowed for pragmatic reasons
+module_name_repetitions = { level = "allow", priority = 21 }
+significant_drop_tightening = { level = "allow", priority = 21 }
+must_use_candidate = { level = "allow", priority = 21 }
+
+# Numeric casting and conversion warnings
+cast_precision_loss = { level = "warn", priority = 22 }
+cast_possible_truncation = { level = "warn", priority = 22 }
+cast_sign_loss = { level = "warn", priority = 22 }
+as_conversions = { level = "warn", priority = 22 }
+
+# Safety-critical denials
+out_of_bounds_indexing = { level = "deny", priority = 30 }
+enum_glob_use = { level = "deny", priority = 30 }
+unwrap_used = { level = "deny", priority = 30 }
+undocumented_unsafe_blocks = { level = "deny", priority = 30 }
+
+# Development/debugging lints
+dbg_macro = { level = "warn", priority = 31 }
+todo = { level = "warn", priority = 31 }
+print_stdout = { level = "warn", priority = 31 }  # CLI should use proper output mechanisms
+
+# Async-specific lints (important for tokio-heavy codebase)
+future_not_send = { level = "warn", priority = 32 }
+async_yields_async = { level = "warn", priority = 32 }
+
+# String and collection efficiency 
+implicit_clone = { level = "warn", priority = 33 }
+inefficient_to_string = { level = "warn", priority = 33 }
+string_lit_as_bytes = { level = "warn", priority = 33 }
+
+# Code complexity (helpful for maintainability)
+too_many_lines = { level = "warn", priority = 34 }
+cognitive_complexity = { level = "warn", priority = 34 }
+
+# Error handling improvements
+result_large_err = { level = "warn", priority = 35 }
+
+# Future considerations
+#expect_used = { level = "deny", priority = 30 }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.deb]
+maintainer = "Stefanie Jane <stef@hyperbliss.tech>"
+copyright = "2024, Git-Iris Contributors <https://github.com/hyperb1iss/git-iris>"
+license-file = ["LICENSE", "4"]
+extended-description = """
+Git-Iris is an AI-powered tool designed to generate meaningful and context-aware Git commit messages.
+"""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+# Assets will be resolved relative to target directory by cargo-deb when using --target
+assets = [
+    [
+        "release/git-iris",
+        "usr/bin/",
+        "755",
+    ],
+    [
+        "README.md",
+        "usr/share/doc/git-iris/README",
+        "644",
+    ],
+    [
+        "git-iris.1",
+        "usr/share/man/man1/git-iris.1",
+        "644",
+    ],
+]
+
+[package.metadata.generate-rpm]
+# Assets will be resolved relative to target directory by cargo-generate-rpm when using --target
+assets = [
+    { source = "release/git-iris", dest = "/usr/bin/git-iris", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/git-iris/README", mode = "644" },
+    { source = "git-iris.1", dest = "/usr/share/man/man1/git-iris.1", mode = "644" },
+]

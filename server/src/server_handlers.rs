@@ -1,7 +1,8 @@
 use crate::contexter::{concatenate_files, gather_relevant_files};
+use crate::repo_mapper::RepositoryMapper;
 use crate::server::{
     AppState, ErrorResponse, ProjectContentResponse, ProjectListResponse, ProjectMetadata,
-    ProjectSummary,
+    ProjectSummary, RepositoryMapResponse, RepositoryAnalysisResponse,
 };
 use crate::utils::validate_api_key;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
@@ -164,6 +165,98 @@ pub async fn run_contexter(
                 );
                 HttpResponse::InternalServerError().json(ErrorResponse {
                     error: "Failed to concatenate files".to_string(),
+                })
+            }
+        }
+    } else {
+        warn!("Project not found: {}", project_name);
+        HttpResponse::NotFound().json(ErrorResponse {
+            error: format!("Project '{}' not found", project_name),
+        })
+    }
+}
+
+// Repository mapping endpoints
+
+pub async fn analyze_repository(
+    req: HttpRequest,
+    project_name: web::Path<String>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let config = data.config.read().await;
+    if !validate_api_key(&req, &config).await {
+        return HttpResponse::Unauthorized().json(ErrorResponse {
+            error: "Invalid or missing API key".to_string(),
+        });
+    }
+
+    let project_name = project_name.into_inner();
+
+    if let Some(project_path) = config.projects.get(&project_name) {
+        debug!("Analyzing repository structure for project: {}", project_name);
+        
+        let mut mapper = RepositoryMapper::new();
+        match mapper.analyze_repository(project_path) {
+            Ok(()) => {
+                info!("Successfully analyzed repository: {}", project_name);
+                let response = RepositoryAnalysisResponse {
+                    project_name: project_name.clone(),
+                    total_components: mapper.insights.total_components,
+                    entry_points: mapper.insights.entry_points.clone(),
+                    dependency_cycles: mapper.graph.cycles.len(),
+                    most_connected_components: mapper.insights.most_connected_components.clone(),
+                    topological_order: mapper.topological_order.clone(),
+                };
+                HttpResponse::Ok().json(response)
+            }
+            Err(e) => {
+                error!("Error analyzing repository {}: {}", project_name, e);
+                HttpResponse::InternalServerError().json(ErrorResponse {
+                    error: "Failed to analyze repository".to_string(),
+                })
+            }
+        }
+    } else {
+        warn!("Project not found: {}", project_name);
+        HttpResponse::NotFound().json(ErrorResponse {
+            error: format!("Project '{}' not found", project_name),
+        })
+    }
+}
+
+pub async fn get_repository_map(
+    req: HttpRequest,
+    project_name: web::Path<String>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let config = data.config.read().await;
+    if !validate_api_key(&req, &config).await {
+        return HttpResponse::Unauthorized().json(ErrorResponse {
+            error: "Invalid or missing API key".to_string(),
+        });
+    }
+
+    let project_name = project_name.into_inner();
+
+    if let Some(project_path) = config.projects.get(&project_name) {
+        debug!("Generating repository map for project: {}", project_name);
+        
+        let mut mapper = RepositoryMapper::new();
+        match mapper.analyze_repository(project_path) {
+            Ok(()) => {
+                let map = mapper.generate_repository_map();
+                info!("Successfully generated repository map for: {}", project_name);
+                let response = RepositoryMapResponse {
+                    project_name: project_name.clone(),
+                    map,
+                    insights: mapper.insights,
+                };
+                HttpResponse::Ok().json(response)
+            }
+            Err(e) => {
+                error!("Error generating repository map for {}: {}", project_name, e);
+                HttpResponse::InternalServerError().json(ErrorResponse {
+                    error: "Failed to generate repository map".to_string(),
                 })
             }
         }

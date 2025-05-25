@@ -37,6 +37,23 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct RepositoryAnalysisResponse {
+    pub project_name: String,
+    pub total_components: usize,
+    pub entry_points: Vec<String>,
+    pub dependency_cycles: usize,
+    pub most_connected_components: Vec<String>,
+    pub topological_order: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RepositoryMapResponse {
+    pub project_name: String,
+    pub map: String,
+    pub insights: crate::repo_mapper::RepositoryInsights,
+}
+
 pub fn config_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/v1")
@@ -51,6 +68,14 @@ pub fn config_routes(cfg: &mut web::ServiceConfig) {
             .route(
                 "/projects/{name}",
                 web::post().to(crate::server_handlers::run_contexter),
+            )
+            .route(
+                "/projects/{name}/analyze",
+                web::post().to(crate::server_handlers::analyze_repository),
+            )
+            .route(
+                "/projects/{name}/map",
+                web::get().to(crate::server_handlers::get_repository_map),
             ),
     );
 }

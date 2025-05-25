@@ -179,3 +179,107 @@ contexter config list
 #### API Versioning
 
 The current API version is v1. All endpoints are prefixed with `/api/v1/`. Future versions of the API may introduce changes or new features and will use a different version prefix (e.g., `/api/v2/`).
+
+## Repository Mapping
+
+Contexter provides advanced repository mapping capabilities to analyze code structure, dependencies, and relationships.
+
+### Repository Mapping API
+
+#### Analyze Repository Structure
+
+Analyze a project's repository structure and dependencies.
+
+- **URL:** `/api/v1/projects/{project-name}/analyze`
+- **Method:** POST
+- **Headers:**
+  - `X-API-Key`: Your API key
+
+**Example curl command:**
+
+```bash
+curl -X POST "http://localhost:3030/api/v1/projects/my-project/analyze" \
+     -H "X-API-Key: your_api_key_here"
+```
+
+**Example response:**
+
+```json
+{
+  "project_name": "my-project",
+  "total_components": 45,
+  "entry_points": ["main", "setup_logging"],
+  "dependency_cycles": 0,
+  "most_connected_components": ["Config", "load_config", "Utils"],
+  "topological_order": ["Utils", "Config", "load_config", "main"]
+}
+```
+
+#### Get Repository Map
+
+Get a visual representation of the repository structure.
+
+- **URL:** `/api/v1/projects/{project-name}/map`
+- **Method:** GET
+- **Headers:**
+  - `X-API-Key`: Your API key
+
+**Example curl command:**
+
+```bash
+curl -X GET "http://localhost:3030/api/v1/projects/my-project/map" \
+     -H "X-API-Key: your_api_key_here"
+```
+
+**Example response:**
+
+```json
+{
+  "project_name": "my-project",
+  "map": "Repository Structure\n===================\n\nComponents: 45 | Entry Points: 2 | Cycles: 0\n\n./src/main.rs\n  pub fn main (2→0)\n  pub fn setup_logging (0→1)\n...",
+  "insights": {
+    "total_files": 15,
+    "total_components": 45,
+    "most_complex_files": [],
+    "most_connected_components": ["Config", "load_config"],
+    "entry_points": ["main", "setup_logging"],
+    "dependency_hotspots": []
+  }
+}
+```
+
+### Repository Mapping CLI
+
+Contexter provides a powerful **single command** for repository mapping and analysis:
+
+#### Basic Usage
+
+```bash
+# Generate repository map (default: clean overview)
+contexter map [path] [options]
+```
+
+**Options:**
+- `--dependencies, -d`: Show dependency relationships
+- `--order, -o`: Show topological processing order  
+- `--output FILE`: Save to file
+- `--json, -j`: JSON format output
+- `--focus COMPONENT`: Focus on specific component
+
+#### Examples
+
+```bash
+# Analyze current directory
+contexter map
+
+# Focus on a specific component
+contexter map --focus "handle_gather"
+
+# Get topological processing order for LLM context building
+contexter map --order --json
+
+# Save comprehensive analysis
+contexter map --dependencies --order --output analysis.txt
+```
+
+For detailed documentation, see [REPO_MAPPER.md](REPO_MAPPER.md).
