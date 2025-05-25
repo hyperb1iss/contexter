@@ -23,7 +23,7 @@ function App() {
   const showBanner = () => {
     console.log(
       `%c 🚀✨🌟 Contexter v1.0.0 launched! 🌠🛸🌈 `,
-      "background: linear-gradient(90deg, #000033 0%, #0033cc 50%, #6600cc 100%); color: #00ffff; font-weight: bold; padding: 5px 10px; border-radius: 5px; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #00ffff, 0 0 35px #00ffff, 0 0 40px #00ffff, 0 0 50px #00ffff, 0 0 75px #00ffff;"
+      'background: linear-gradient(90deg, #000033 0%, #0033cc 50%, #6600cc 100%); color: #00ffff; font-weight: bold; padding: 5px 10px; border-radius: 5px; text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #00ffff, 0 0 35px #00ffff, 0 0 40px #00ffff, 0 0 50px #00ffff, 0 0 75px #00ffff;'
     )
   }
 
@@ -39,14 +39,15 @@ function App() {
     try {
       const projectList = await api.fetchProjects(settings)
       setProjects(projectList)
-      
+
       if (projectList.length === 0) {
         setError('No projects found. Make sure your server is running and configured correctly.')
       }
     } catch (err) {
-      const errorMessage = err instanceof ApiError 
-        ? `API Error: ${err.message}`
-        : 'Failed to load projects. Please check your connection.'
+      const errorMessage =
+        err instanceof ApiError
+          ? `API Error: ${err.message}`
+          : 'Failed to load projects. Please check your connection.'
       setError(errorMessage)
       console.error('Failed to load projects:', err)
     } finally {
@@ -61,18 +62,18 @@ function App() {
 
   if (!settings.apiKey || !settings.serverUrl) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 flex items-center justify-center p-6">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto bg-gradient-to-r from-neon-500 to-electric-600 rounded-full flex items-center justify-center">
-            <Zap className="w-8 h-8 text-white" />
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 p-6">
+        <div className="space-y-4 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-neon-500 to-electric-600">
+            <Zap className="h-8 w-8 text-white" />
           </div>
-          <h2 className="text-xl font-semibold gradient-text">Welcome to Contexter</h2>
-          <p className="text-cyber-300 text-sm max-w-xs">
+          <h2 className="gradient-text text-xl font-semibold">Welcome to Contexter</h2>
+          <p className="max-w-xs text-sm text-cyber-300">
             Please configure your API key and server URL to get started.
           </p>
           <button
             onClick={() => chrome.runtime.openOptionsPage()}
-            className="px-4 py-2 bg-neon-600 hover:bg-neon-500 text-white rounded-lg transition-colors glow-border"
+            className="glow-border rounded-lg bg-neon-600 px-4 py-2 text-white transition-colors hover:bg-neon-500"
           >
             Open Settings
           </button>
@@ -83,30 +84,29 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="w-full h-full bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 text-white overflow-hidden">
+      <div className="h-full w-full overflow-hidden bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 text-white">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
-                             radial-gradient(circle at 75% 75%, rgba(124, 58, 237, 0.3) 0%, transparent 50%)`
-          }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.3) 0%, transparent 50%),
+                             radial-gradient(circle at 75% 75%, rgba(124, 58, 237, 0.3) 0%, transparent 50%)`,
+            }}
+          />
         </div>
 
-        <div className="relative z-10 flex flex-col h-full">
+        <div className="relative z-10 flex h-full flex-col">
           <Header onRefresh={loadProjects} />
-          
+
           <main className="flex-1 overflow-hidden">
             {error && (
-              <div className="mx-4 mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm">
+              <div className="mx-4 mb-4 rounded-lg border border-red-500/30 bg-red-500/20 p-3 text-sm text-red-300">
                 {error}
               </div>
             )}
 
-            {currentProject ? (
-              <ProjectDetails />
-            ) : (
-              <ProjectList projects={projects} />
-            )}
+            {currentProject ? <ProjectDetails /> : <ProjectList projects={projects} />}
           </main>
         </div>
 
@@ -116,4 +116,4 @@ function App() {
   )
 }
 
-export default App 
+export default App

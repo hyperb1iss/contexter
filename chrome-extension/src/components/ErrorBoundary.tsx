@@ -27,18 +27,19 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 flex items-center justify-center p-6">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-red-500/20 border border-red-500/30 rounded-full flex items-center justify-center">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
+        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyber-900 via-cyber-800 to-cyber-900 p-6">
+          <div className="space-y-4 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-red-500/30 bg-red-500/20">
+              <AlertTriangle className="h-8 w-8 text-red-400" />
             </div>
             <h2 className="text-xl font-semibold text-white">Something went wrong</h2>
-            <p className="text-cyber-300 text-sm max-w-xs">
-              The extension encountered an unexpected error. Please try refreshing or restart the extension.
+            <p className="max-w-xs text-sm text-cyber-300">
+              The extension encountered an unexpected error. Please try refreshing or restart the
+              extension.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
+              className="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-500"
             >
               Refresh
             </button>
@@ -49,4 +50,4 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
     return this.props.children
   }
-} 
+}

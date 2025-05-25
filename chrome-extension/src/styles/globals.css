@@ -22,7 +22,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.0%;
+    --ring: 224.3 76.3% 94%;
     --radius: 0.5rem;
   }
 }
@@ -31,70 +31,72 @@
   * {
     @apply border-gray-200;
   }
-  
+
   body {
     @apply bg-cyber-900 text-white;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
-  
+
   /* Custom scrollbar for webkit browsers */
   ::-webkit-scrollbar {
-    @apply w-2 h-2;
+    @apply h-2 w-2;
   }
-  
+
   ::-webkit-scrollbar-track {
-    @apply bg-cyber-800/50 rounded-full;
+    @apply rounded-full bg-cyber-800/50;
   }
-  
+
   ::-webkit-scrollbar-thumb {
-    @apply bg-neon-500/60 rounded-full;
+    @apply rounded-full bg-neon-500/60;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-neon-500/80;
   }
-  
+
   /* Glass morphism effect */
   .glass {
-    @apply bg-white/5 backdrop-blur-md border border-white/10;
+    @apply border border-white/10 bg-white/5 backdrop-blur-md;
   }
-  
+
   .glass-dark {
-    @apply bg-black/20 backdrop-blur-md border border-white/5;
+    @apply border border-white/5 bg-black/20 backdrop-blur-md;
   }
-  
+
   /* Futuristic glow effects */
   .glow-border {
     @apply relative;
   }
-  
+
   .glow-border::before {
     content: '';
-    @apply absolute -inset-0.5 bg-gradient-to-r from-neon-500 to-electric-600 rounded-lg opacity-20 blur-sm;
+    @apply absolute -inset-0.5 rounded-lg bg-gradient-to-r from-neon-500 to-electric-600 opacity-20 blur-sm;
     z-index: -1;
   }
-  
+
   .glow-border:hover::before {
     @apply opacity-40;
   }
-  
+
   /* Animated gradient text */
   .gradient-text {
     @apply bg-gradient-to-r from-neon-400 via-electric-500 to-neon-600 bg-clip-text text-transparent;
   }
-  
+
   /* Pulsing dot animation */
   .pulse-dot {
     @apply relative;
   }
-  
+
   .pulse-dot::before {
     content: '';
-    @apply absolute top-1 right-1 w-2 h-2 bg-neon-500 rounded-full animate-ping;
+    @apply absolute right-1 top-1 h-2 w-2 animate-ping rounded-full bg-neon-500;
   }
-  
+
   .pulse-dot::after {
     content: '';
-    @apply absolute top-1 right-1 w-2 h-2 bg-neon-500 rounded-full;
+    @apply absolute right-1 top-1 h-2 w-2 rounded-full bg-neon-500;
   }
-} 
+}

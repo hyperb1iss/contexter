@@ -8,4 +8,4 @@ if (container) {
   root.render(<App />)
 } else {
   console.error('Popup root container not found')
-} 
+}

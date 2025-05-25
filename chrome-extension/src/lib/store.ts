@@ -28,22 +28,22 @@ interface ExtensionState {
   projects: Project[]
   currentProject: Project | null
   projectMetadata: Project | null
-  
+
   // File selection
   selectedFiles: Set<string>
   fileTree: FileTreeNode[]
-  
+
   // Content
   projectContent: string | null
-  
+
   // UI state
   isLoading: boolean
   loadingMessage: string
   error: string | null
-  
+
   // Settings
   settings: Settings
-  
+
   // Actions
   setProjects: (projects: Project[]) => void
   setCurrentProject: (project: Project | null) => void
@@ -76,18 +76,18 @@ export const useExtensionStore = create<ExtensionState>()(
       settings: {
         apiKey: '',
         serverUrl: 'http://localhost:3030',
-        theme: 'system'
+        theme: 'system',
       },
 
       // Actions
       setProjects: (projects) => set({ projects }),
-      
+
       setCurrentProject: (project) => set({ currentProject: project }),
-      
+
       setProjectMetadata: (metadata) => set({ projectMetadata: metadata }),
-      
+
       setSelectedFiles: (files) => set({ selectedFiles: files }),
-      
+
       toggleFileSelection: (filePath) => {
         const { selectedFiles } = get()
         const newSelection = new Set(selectedFiles)
@@ -98,46 +98,45 @@ export const useExtensionStore = create<ExtensionState>()(
         }
         set({ selectedFiles: newSelection })
       },
-      
+
       selectAllFiles: () => {
         const { projectMetadata } = get()
         if (projectMetadata) {
           set({ selectedFiles: new Set(projectMetadata.files) })
         }
       },
-      
+
       deselectAllFiles: () => set({ selectedFiles: new Set() }),
-      
+
       setFileTree: (tree) => set({ fileTree: tree }),
-      
+
       toggleNodeExpansion: (nodeId) => {
         const { fileTree } = get()
         const updateNode = (nodes: FileTreeNode[]): FileTreeNode[] =>
-          nodes.map(node => 
-            node.id === nodeId 
+          nodes.map((node) =>
+            node.id === nodeId
               ? { ...node, expanded: !node.expanded }
-              : node.children 
+              : node.children
                 ? { ...node, children: updateNode(node.children) }
                 : node
           )
         set({ fileTree: updateNode(fileTree) })
       },
-      
+
       setProjectContent: (content) => set({ projectContent: content }),
-      
-      setLoading: (loading, message = '') => 
-        set({ isLoading: loading, loadingMessage: message }),
-      
+
+      setLoading: (loading, message = '') => set({ isLoading: loading, loadingMessage: message }),
+
       setError: (error) => set({ error }),
-      
-      updateSettings: (newSettings) => 
-        set(state => ({ 
-          settings: { ...state.settings, ...newSettings } 
-        }))
+
+      updateSettings: (newSettings) =>
+        set((state) => ({
+          settings: { ...state.settings, ...newSettings },
+        })),
     }),
     {
       name: 'contexter-storage',
-      partialize: (state) => ({ settings: state.settings })
+      partialize: (state) => ({ settings: state.settings }),
     }
   )
-) 
+)

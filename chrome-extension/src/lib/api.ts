@@ -23,13 +23,13 @@ class ContexterApi {
     options: RequestInit = {}
   ): Promise<T> {
     const { apiKey, serverUrl } = config
-    
+
     if (!apiKey || !serverUrl) {
       throw new ApiError('API Key or Server URL is missing')
     }
 
     const url = `${serverUrl}${endpoint}`
-    
+
     try {
       const response = await fetch(url, {
         ...options,
@@ -60,21 +60,12 @@ class ContexterApi {
   }
 
   async fetchProjects(config: ApiConfig): Promise<Project[]> {
-    const data = await this.makeRequest<{ projects: Project[] }>(
-      '/api/v1/projects',
-      config
-    )
+    const data = await this.makeRequest<{ projects: Project[] }>('/api/v1/projects', config)
     return data.projects
   }
 
-  async fetchProjectMetadata(
-    projectName: string,
-    config: ApiConfig
-  ): Promise<Project> {
-    return this.makeRequest<Project>(
-      `/api/v1/projects/${encodeURIComponent(projectName)}`,
-      config
-    )
+  async fetchProjectMetadata(projectName: string, config: ApiConfig): Promise<Project> {
+    return this.makeRequest<Project>(`/api/v1/projects/${encodeURIComponent(projectName)}`, config)
   }
 
   async fetchProjectContent(
@@ -85,7 +76,7 @@ class ContexterApi {
   ): Promise<string> {
     // If all files are selected, send empty array to get everything
     const paths = selectedFiles.length === allFiles.length ? [] : selectedFiles
-    
+
     const data = await this.makeRequest<{ content: string }>(
       `/api/v1/projects/${encodeURIComponent(projectName)}`,
       config,
@@ -108,4 +99,4 @@ class ContexterApi {
 }
 
 export const api = new ContexterApi()
-export { ApiError } 
+export { ApiError }

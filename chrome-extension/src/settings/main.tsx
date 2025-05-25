@@ -8,4 +8,4 @@ if (container) {
   root.render(<Settings />)
 } else {
   console.error('Settings root container not found')
-} 
+}

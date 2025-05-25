@@ -6,4 +6,4 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.action.onClicked.addListener((tab) => {
   // Optional: Handle extension icon clicks if needed
   console.log('Extension clicked on tab:', tab.url)
-}) 
+})

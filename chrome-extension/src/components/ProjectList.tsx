@@ -8,13 +8,8 @@ interface ProjectListProps {
 }
 
 export default function ProjectList({ projects }: ProjectListProps) {
-  const { 
-    settings, 
-    setCurrentProject, 
-    setProjectMetadata, 
-    setLoading, 
-    setError 
-  } = useExtensionStore()
+  const { settings, setCurrentProject, setProjectMetadata, setLoading, setError } =
+    useExtensionStore()
 
   const handleProjectSelect = async (project: Project) => {
     setLoading(true, `Loading ${project.name}...`)
@@ -34,13 +29,13 @@ export default function ProjectList({ projects }: ProjectListProps) {
 
   if (projects.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto bg-cyber-700/50 rounded-full flex items-center justify-center">
-            <FolderOpen className="w-8 h-8 text-cyber-400" />
+      <div className="flex flex-1 items-center justify-center p-8">
+        <div className="space-y-4 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-cyber-700/50">
+            <FolderOpen className="h-8 w-8 text-cyber-400" />
           </div>
-          <p className="text-cyber-400 text-sm">No projects available</p>
-          <p className="text-cyber-500 text-xs max-w-xs">
+          <p className="text-sm text-cyber-400">No projects available</p>
+          <p className="max-w-xs text-xs text-cyber-500">
             Make sure your Contexter server is running and has projects configured.
           </p>
         </div>
@@ -49,49 +44,47 @@ export default function ProjectList({ projects }: ProjectListProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-      <h2 className="text-sm font-semibold text-cyber-300 mb-4 flex items-center">
-        <FolderOpen className="w-4 h-4 mr-2" />
+    <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      <h2 className="mb-4 flex items-center text-sm font-semibold text-cyber-300">
+        <FolderOpen className="mr-2 h-4 w-4" />
         Projects ({projects.length})
       </h2>
-      
+
       {projects.map((project, index) => (
         <button
           key={project.name}
           onClick={() => handleProjectSelect(project)}
           className={cn(
-            "w-full p-4 rounded-lg text-left transition-all duration-300 group",
-            "glass-dark hover:bg-neon-500/10",
-            "border border-cyber-600/30 hover:border-neon-500/50",
-            "transform hover:scale-[1.02] hover:shadow-glow",
-            "animate-float"
+            'group w-full rounded-lg p-4 text-left transition-all duration-300',
+            'glass-dark hover:bg-neon-500/10',
+            'border border-cyber-600/30 hover:border-neon-500/50',
+            'transform hover:scale-[1.02] hover:shadow-glow',
+            'animate-float'
           )}
           style={{
-            animationDelay: `${index * 0.1}s`
+            animationDelay: `${index * 0.1}s`,
           }}
         >
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-white group-hover:text-neon-300 transition-colors truncate">
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate font-semibold text-white transition-colors group-hover:text-neon-300">
                 {project.name}
               </h3>
-              <p className="text-xs text-cyber-400 group-hover:text-cyber-300 transition-colors mt-1 font-mono">
+              <p className="mt-1 font-mono text-xs text-cyber-400 transition-colors group-hover:text-cyber-300">
                 {truncateText(project.path, 40)}
               </p>
               {project.files && (
-                <p className="text-xs text-cyber-500 mt-2">
-                  {project.files.length} files
-                </p>
+                <p className="mt-2 text-xs text-cyber-500">{project.files.length} files</p>
               )}
             </div>
-            
-            <ChevronRight className="w-5 h-5 text-cyber-500 group-hover:text-neon-400 group-hover:translate-x-1 transition-all duration-200 flex-shrink-0 ml-3" />
+
+            <ChevronRight className="ml-3 h-5 w-5 flex-shrink-0 text-cyber-500 transition-all duration-200 group-hover:translate-x-1 group-hover:text-neon-400" />
           </div>
-          
+
           {/* Subtle gradient overlay on hover */}
-          <div className="absolute inset-0 bg-gradient-to-r from-neon-500/0 via-neon-500/5 to-electric-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+          <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-neon-500/0 via-neon-500/5 to-electric-600/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         </button>
       ))}
     </div>
   )
-} 
+}
